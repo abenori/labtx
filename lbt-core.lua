@@ -242,6 +242,7 @@ end
 function LBibTeX.LBibTeX:read()
 	-- load databse
 	local c,p,m
+	preambles = {}
 	for i = 1,#self.bibs do
 		c,p,m = LBibTeX.LBibTeX.read_database(self.bibs[i])
 		if c == nil then 
@@ -517,7 +518,7 @@ function LBibTeX.LBibTeX.read_database(file)
 		if type == preamble_str then
 			local pre,line = get_preamble(line,buf,endbra)
 			if pre == nil then return nil,U"searching preamble.. " .. line end
-			preamble = preamble .. del_dquote_bracket(trim(pre))
+			preamble = preamble .. LBibTeX.LBibTeX.apply_macro_to_str(pre,{})
 		elseif type == comment_str then
 			local pre,line = get_preamble(line,buf,endbra)
 			if pre == nil then return nil,U"searching comment.. " .. line end
