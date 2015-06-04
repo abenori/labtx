@@ -1,13 +1,15 @@
 require "lbt-funcs"
 require "lbt-template"
 local U = require "icu.ustring"
-require "mod-amsalpha"
+require "mod-ams"
 
 for v,k in pairs(LBibTeX.Styles.amsalpha.macros) do
 	BibTeX.macros[v] = k
 end
 
 BibTeX:read()
+LBibTeX.Styles.amsalpha.CrossReference:modify_citations(BibTeX)
+BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
 
 -- label
 for i = 1,#BibTeX.cites do
@@ -41,21 +43,15 @@ for i = 1,#BibTeX.cites - 1 do
 	end
 end
 
-LBibTeX.Template.blockseparator = {}
-for i = 1,#LBibTeX.Styles.amsalpha.blockseparator do
-	LBibTeX.Template.blockseparator[i] = LBibTeX.Styles.amsalpha.blockseparator[i]
-end
-
-LBibTeX.Template.blocklast = {}
-for i = 1,#LBibTeX.Styles.amsalpha.blocklast do
-	LBibTeX.Template.blocklast[i] = LBibTeX.Styles.amsalpha.blocklast[i]
-end
+LBibTeX.Template.blockseparator = LBibTeX.Styles.amsalpha.blockseparator
+LBibTeX.Template.blocklast = LBibTeX.Styles.amsalpha.blocklast
 
 BibTeX:outputline(U"\\newcommand{\\etalchar}[1]{$^{#1}$}")
 BibTeX:outputline(BibTeX.preamble)
 BibTeX:outputline(U"\\begin{thebibliography}{" .. BibTeX:get_longest_label() .. U"}")
-f = LBibTeX.Template.make(LBibTeX.Styles.amsalpha.Templates,LBibTeX.Styles.amsalpha.Formatter)
-if f == nil then BibTeX:error(LBibTeX.Template.LastMsg) end
+local f1 = LBibTeX.Template.make(LBibTeX.Styles.amsalpha.Templates,LBibTeX.Styles.amsalpha.Formatter)
+local f2 = LBibTeX.Template.make(LBibTeX.Styles.amsalpha.CrossReference.Templates,LBibTeX.Styles.amsalpha.Formatter)
+local f = LBibTeX.Styles.amsalpha.CrossReference:make_formatter(f1,f2)
 BibTeX:outputcites(f)
 BibTeX:outputline(U"\\end{thebibliography}")
 

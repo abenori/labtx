@@ -357,7 +357,7 @@ function LBibTeX.forat_name_by_parts(nameparts,format)
 					end
 					thispart = thispart .. name
 				end
-				if (thispart:len() + after:len()) > 3 and after:sub(after:len()) == U"~" then
+				if (LBibTeX.text_length(thispart) + LBibTeX.text_length(after)) > 3 and after:sub(after:len()) == U"~" then
 					after = after:sub(1,after:len() - 1)
 					if after:sub(after:len(),after:len()) ~= U"~" then
 						after = after .. U" "
@@ -459,3 +459,70 @@ end
 function LBibTeX.remove_TeX_cs(s)
 	return s:gsub(U"\\[a-zA-Z]+",U""):gsub(U"\\.",U""):gsub(U"[{}]",U"")
 end
+
+local default_required = {}
+default_required["article" ] = {required = {"author", "title", "journal", "year"}, optional = {"volume", "number", "pages", "month", "note"}}
+default_required["book"] = {required = {{"author","editor"}, "title", "publisher", "year"}, optional = {{"volume","number"}, "series", "address", "edition", "month", "note"}}
+default_required["booklet"] = {required = {"title"}, optional = {"titleauthor", "howpublished", "address", "month", "year", "note"}}
+default_required["inbook"] = {required = {{"author","editor"}, "title", "chapter","pages", "publisher", "year"}, optional = {{"volume","number"}, "series", "type", "address", "edition", "month", "note"}}
+default_required["incollection"] = {required = {"author", "title", "booktitle", "publisher", "year"}, optional = {"editor", {"volume", "number"}, "series", "type", "chapter", "pages", "address", "edition", "month", "note"}}
+default_required["inproceedings"] = {required = {"author", "title", "booktitle", "year"}, optional = {"editor", {"volume", "number"}, "series", "pages", "address", "month", "organization", "publisher", "note"}}
+default_required["manual"] = {required = {"title"}, optional = {"author", "organization", "address", "edition", "month", "year", "note"}}
+default_required["mastersthesis"] = {required = {"author", "title", "school", "year"}, optional = {"type", "address","month", "note"}}
+default_required["misc"] = {required = {}, optional = {"author", "title", "howpublished", "month", "year", "note"}}
+default_required["phdthesis"] = {required = {"author", "title", "school", "year"}, optional = {"type", "address", "month", "note"}}
+default_required["proceedings"] = {required = {"title", "year"}, optional = {"editor", {"volume", "number"}, "series", "address", "month", "organization", "publisher", "note"}}
+default_required["techreport"] = {required = {"author", "title", "institution", "year" }, optional = {"type", "number", "address", "month", "note"}}
+default_required["unpublished"] = {required = {"author", "title", "note"}, optional = {"month", "year"}}
+default_required["conference"] = default_required["incollection"]
+
+-- required[type] = {required = {...},optional = {...}}
+-- optional is ignored (at this point)
+function LBibTeX.LBibTeX.citation_check(citations,required)
+	if required == nil then required = default_required end
+	r = {}
+	for dummy,v in pairs(citations) do
+		local tocheck = required[v.type]
+		if tocheck == nil then tocheck = required[U.encode(v.type)] end
+		if tocheck ~= nil then
+			for i = 1,#tocheck.required do
+				local req = tocheck.required[i]
+				if type(req) ~= "table" then req = {req} end
+				local check = false
+				for j = 1,#req do
+					if v.fields[req[j]] ~= nil then check = true break end
+				end
+				if not check then
+					if r[v.key] == nil then r[v.key] = {} end
+					local req_clone = {}
+					for j = 1,#req do
+						local r = req[j]
+						if type(r) == "string" then r = U(r) end
+						table.insert(req_clone,r)
+					end
+					table.insert(r[v.key],req_clone)
+				end
+			end
+		end
+	end
+	return r
+end
+
+function LBibTeX.LBibTeX:output_citation_check(citation_check)
+	for k,v in pairs(citation_check) do
+		local r = U"missing "
+		for i = 1,#v do
+			if i > 1 then r = r .. U", " end
+			if #v[i] > 1 then r = r .. U"(" end
+			r = r .. v[i][1]
+			for j = 2,#v[i] do
+				r = r .. " or " .. v[i][j]
+			end
+			if #v[i] > 1 then r = r .. U")" end
+		end
+		r = r .. U" in " .. k
+		self:warning(r)
+	end
+end
+
+

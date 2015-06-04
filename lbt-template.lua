@@ -69,7 +69,7 @@ local function array_to_string(a)
 	return r
 end
 
--- block等の切り出し．return array,r で，|で区切った結果がarray，rは[***](ココ)
+-- block等の切り出し．return array,r で，sepで区切った結果がarray，rは[***](ココ)
 -- 失敗したらreturn nil,nil
 local function GetArrayOfBlocks(str,beg,en,sep,pos)
 	local nest = 0
@@ -77,8 +77,8 @@ local function GetArrayOfBlocks(str,beg,en,sep,pos)
 	local r = pos
 	local blockstart = pos
 	local search
-	if sep ~= nil then search = (beg .. en .. sep):gsub(U"([%[%]])",U"%%%1")
-	else search = (beg .. en):gsub(U"([%[%]])",U"%%%1") end
+	if sep ~= nil then search = (beg .. en .. sep):gsub(U"[%[%]]",U"%%%1")
+	else search = (beg .. en):gsub(U"[%[%]]",U"%%%1") end
 	while true do
 		r = findUnescaped(str,search,r)
 		if r == nil then
@@ -144,6 +144,7 @@ end
 
 local MakeTemplateImpl
 
+-- [A:B:C:...]
 local function MakeBlockFunction(array,funcs,blocknest)
 	local f = {}
 	local seps = {}
@@ -173,6 +174,7 @@ local function MakeBlockFunction(array,funcs,blocknest)
 	end
 end
 
+-- <A|B|C>
 local function MakeStringFunction(array,funcs,bocknest)
 	local f1 = MakeTemplateImpl(array[1],funcs,blocknest)
 	local f2 = MakeTemplateImpl(array[2],funcs,blocknest)
@@ -191,12 +193,19 @@ local function MakeStringFunction(array,funcs,bocknest)
 	end
 end
 
+-- $<A|B|C|...>
 local function MakeFormatFunction(array,funcs)
 	local ff = {}
 	for i = 1,#array do
 		local f = funcs[array[i]]
 		if f == nil then
-			ff[i] = function(c) return c.fields[array[i]] end
+			ff[i] = function(f,c)
+				local r = c.fields[array[i]]
+				if r == nil then return nil
+				elseif r.toustring ~= nil then return r:toustring()
+				elseif type(r) == "string" then return U(r)
+				else return r end
+			end
 		elseif type(f) ~= "function" then
 			return nil
 		else
@@ -205,12 +214,19 @@ local function MakeFormatFunction(array,funcs)
 	end
 	return function(c)
 		for i = 1,#ff do
-			local s = ff[i](c)
-			if type(s) == "string" then s = U(s) end
+			local s = ff[i](funcs,c)
 			if s ~= nil then
 				if type(s) == "table" then
+					for i = 1,#s do
+						if type(s[i]) == "string" then s[i] = U(s[i])
+						elseif s[i].toustring ~= nil then s[i] = s[i]:toustring()
+						end
+					end
 					if not isempty(s) then return s end
 				else
+					if type(s) == "string" then s = U(s)
+					elseif s.toustring ~= nil then s = s:toustring()
+					end
 					if s ~= U"" then return {s} end
 				end
 			end
@@ -295,21 +311,33 @@ local function ModifyFunctions(funcs)
 			if type(v) ~= "function" then
 				local f = LBibTeX.Template.make_from_str(v,funcs_u)
 				if f ~= nil then
-					ff[k] = f
+					ff[k] = function(dummy,c) return f(c) end
 					changed = true
 				else ff[k] = v end
 			else ff[k] = v end
 		end
-		if not changed then return ff end
+		if not changed then break end
 		funcs_u = ff
+		ff = {}
 	end
+	local r = {}
+	for k,v in pairs(ff) do
+		r[U.encode(k)] = v
+	end
+	for k,v in pairs(r) do
+		ff[k] = v
+	end
+	return ff
 end
 
 function LBibTeX.Template.make_from_str(templ,funcs)
 	LBibTeX.Template.LastMsg = U""
 	if type(templ) == "string" then templ = U(templ) end
 	local f = MakeTemplateImpl(templ,funcs,1)
-	if f == nil then return nil end
+	if f == nil then
+		print(LBibTeX.Template.LastMsg)
+		return nil
+	end
 	return function(c)
 		return array_to_string(f(c))
 	end
