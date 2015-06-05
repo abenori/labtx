@@ -1,10 +1,9 @@
 require "lbt-core"
-U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 LBibTeX.CrossReference = {}
 LBibTeX.CrossReference.all_type = {}
-
-
 
 function LBibTeX.CrossReference.new()
 	local obj = {reference_key_name = U"crossref",override = false,inherit = {}, except = {},all = true,mincrossrefs=1}

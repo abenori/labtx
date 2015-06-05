@@ -1,6 +1,7 @@
 require "lbt-funcs"
 require "lbt-template"
-local U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 require "mod-ams"
 
 for v,k in pairs(LBibTeX.Styles.amsalpha.macros) do

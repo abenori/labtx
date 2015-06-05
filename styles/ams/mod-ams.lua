@@ -3,7 +3,8 @@ require "lbt-funcs"
 require "lbt-styles"
 require "lbt-template"
 require "lbt-crossref"
-local U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 require "mod-std"
 
@@ -49,12 +50,12 @@ LBibTeX.Styles.amsalpha.Templates["unpublished"] = U"[$<author>:$<title>:$<note>
 LBibTeX.Styles.amsalpha.Templates[""] = LBibTeX.Styles.amsalpha.Templates["misc"]
 LBibTeX.Styles.amsalpha.Formatter = {}
 
-local nameformat = "{ff~}{vv~}{ll}{, jj}"
+function LBibTeX.Styles.amsalpha.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
 
 function LBibTeX.Styles.amsalpha.Formatter:format_names(names)
 	local a = LBibTeX.split_names(names)
-	if #a <= 2 then return LBibTeX.make_name_list(a,nameformat,{", "," and "},", et~al.")
-	else return LBibTeX.make_name_list(a,nameformat,{", ",", and "},", et~al.") end
+	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
+	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
 function LBibTeX.Styles.amsalpha.Formatter:proceedings_organization(c)

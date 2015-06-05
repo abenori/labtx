@@ -1,5 +1,6 @@
 require "lbt-core"
-local U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 -- not compatible with text.prefix$ (at least at this point)
 function LBibTeX.text_prefix(str,num)

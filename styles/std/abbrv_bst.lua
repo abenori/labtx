@@ -1,6 +1,8 @@
 require "lbt-funcs"
 require "lbt-template"
 require "mod-std"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 BibTeX.macros[U"jan"] = U"Jan."
 BibTeX.macros[U"feb"] = U"Feb."

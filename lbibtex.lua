@@ -1,6 +1,7 @@
 local start_time = os.clock()
 kpse.set_program_name("pbibtex")
-local U = require"icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 require "lbt-core"
 
 local f = arg[1]

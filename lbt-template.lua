@@ -1,6 +1,7 @@
 require "lbt-core"
 require "lbt-item"
-local U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 --[[
 書式をあたえるとスタイルを生成してくれるようにする．

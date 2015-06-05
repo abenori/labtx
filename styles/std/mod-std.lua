@@ -3,7 +3,9 @@ require "lbt-funcs"
 require "lbt-styles"
 require "lbt-template"
 require "lbt-crossref"
-local U = require "icu.ustring"
+local icu = require "lbt-string"
+local U = icu.ustring
+local collator = icu.collator
 
 LBibTeX.Styles.std = {}
 
@@ -101,7 +103,6 @@ local function firstnonnull(c,a)
 end
 
 
-local collator = require "icu.collator"
 local col = collator.open("US")
 col:strength(collator.PRIMARY)
 

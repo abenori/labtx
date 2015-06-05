@@ -1,6 +1,5 @@
-local U = require "icu.ustring"
-local icu = {}
-icu.ufile = require "icu.ufile"
+local icu = require "lbt-string"
+local U = icu.ustring
 
 LBibTeX = {}
 local emptystr = U""
@@ -66,7 +65,8 @@ function LBibTeX.LBibTeX.new(file)
 	local fp,msg = io.open(f,"r")
 	if fp == nil then return nil,msg end
 	fp:close()
-	for line in icu.ufile.lines(icu.ufile.open(f,"r","UTF-8")) do
+	fp = icu.ufile.open(f,"r","UTF-8")
+	for line in fp:lines() do
 		local r = line:find(U"\\citation{")
 		if r ~= nil then
 			local a = getargument(line:sub(r))
@@ -100,7 +100,7 @@ function LBibTeX.LBibTeX.new(file)
 			end
 		end
 	end
-	
+	fp:close()
 	local obj = {}
 	obj.style = style
 	local r = file:find(U"%.[^./]*$")
