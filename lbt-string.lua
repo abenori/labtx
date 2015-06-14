@@ -1,4 +1,7 @@
 local use_icu = true
+if LBibTeX ~= nil and LBibTeX.use_icu ~= nil then use_icu = LBibTeX.use_icu end
+
+LBibTeX.use_icu = true
 
 if use_icu then
 	local icu = {}

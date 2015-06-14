@@ -341,6 +341,20 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 	end
 end
 
+function LBibTeX.LBibTeX:outputthebibliography(formatter)
+	local use_label = false
+	for i = 1,#self.cites do
+		if self.cites[i].label ~= nil then use_label = true break end
+	end
+	local longest_label
+	if use_label then longest_label = self:get_longest_label()
+	else use_label = U(tostring(#self.cites)) end
+	self:outputline(self.preamble)
+	self:outputline(U"\\begin{thebibliography}{" .. longest_label .. U"}")
+	self:outputcites(formatter)
+	self:outputline(U"\\end{thebibliography}")
+end
+
 local equal = U"="
 
 -- key に = が入っていると失敗する．

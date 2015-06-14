@@ -1,64 +1,63 @@
 require "lbt-core"
 require "lbt-funcs"
-require "lbt-styles"
 require "lbt-template"
 require "lbt-crossref"
 local icu = require "lbt-string"
 local U = icu.ustring
 
-require "mod-std"
+local std_styles = require "mod-std"
 
-LBibTeX.Styles.amsalpha = {}
-LBibTeX.Styles.amsalpha.macros = {}
+ams_styles = {}
+ams_styles.macros = {}
 
-LBibTeX.Styles.amsalpha.macros[U"jan"] = U"January"
-LBibTeX.Styles.amsalpha.macros[U"feb"] = U"February"
-LBibTeX.Styles.amsalpha.macros[U"mar"] = U"March"
-LBibTeX.Styles.amsalpha.macros[U"apr"] = U"April"
-LBibTeX.Styles.amsalpha.macros[U"may"] = U"May"
-LBibTeX.Styles.amsalpha.macros[U"jun"] = U"June"
-LBibTeX.Styles.amsalpha.macros[U"jul"] = U"July"
-LBibTeX.Styles.amsalpha.macros[U"aug"] = U"August"
-LBibTeX.Styles.amsalpha.macros[U"sep"] = U"September"
-LBibTeX.Styles.amsalpha.macros[U"oct"] = U"October"
-LBibTeX.Styles.amsalpha.macros[U"nov"] = U"November"
-LBibTeX.Styles.amsalpha.macros[U"dec"] = U"December"
+ams_styles.macros[U"jan"] = U"January"
+ams_styles.macros[U"feb"] = U"February"
+ams_styles.macros[U"mar"] = U"March"
+ams_styles.macros[U"apr"] = U"April"
+ams_styles.macros[U"may"] = U"May"
+ams_styles.macros[U"jun"] = U"June"
+ams_styles.macros[U"jul"] = U"July"
+ams_styles.macros[U"aug"] = U"August"
+ams_styles.macros[U"sep"] = U"September"
+ams_styles.macros[U"oct"] = U"October"
+ams_styles.macros[U"nov"] = U"November"
+ams_styles.macros[U"dec"] = U"December"
 
 -- generate label
-LBibTeX.Styles.amsalpha.make_label = LBibTeX.Styles.std.make_label
+ams_styles.make_label = std_styles.make_label
 
 -- sort
-LBibTeX.Styles.amsalpha.sort = LBibTeX.Styles.std.sort
+ams_styles.sort = std_styles.sort
 
 -- templates
-LBibTeX.Styles.amsalpha.Templates = {}
+ams_styles.Templates = {}
 
-LBibTeX.Styles.amsalpha.Templates["article"] = U"[$<author>:$<title>:<|$<journal>|< \\textbf{|$<volume>|}>< (|$<year>|)>>:<no.~|$<number>|>:$<pages>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["book"] = U"[$<author|editor>:$<title>:$<edition>:$<book_volume_series_number>:$<publisher>:$<address>:$<date>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["booklet"] = U"[$<author>:$<title>:$<howpublished>:$<address>:$<date>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["inbook"] = U"[$<author|editor>:$<title>:$<edition>:$<book_volume_series_number>:$<chapter_pages>:$<publisher>:$<address>:$<date>:@S<>$< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["incollection"] = U"[$<author>:$<title>:$<incollection_title_editor>:$<book_volume_series_number>:$<publisher>:$<address>:$<edition>:$<date>:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["inproceedings"] = U"[$<author>:$<title>:<|$<booktitle>|< (|$<address>|)>< |$<editor_nonauthor>|>>:$<book_volume_series_number>:$<organization>:$<publisher>:$<date>:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["conference"] = LBibTeX.Styles.amsalpha.Templates[U"inproceedings"]
-LBibTeX.Styles.amsalpha.Templates["manual"] = U"[$<author|organization_address>:$<title>:$<manual_organization_address_aftertittle>:$<edition>:$<date>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["mastersthesis"] = U"[$<author>:$<title>:$<master_thesis_type>:$<school>:$<address>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["misc"] = U"[$<author>:$<title>:$<howpublished>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["phdthesis"] = U"[$<author>:$<title>:$<phd_thesis_type>:$<school>:$<address>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["proceedings"] = U"[$<editor|organization>:$<title>:$<book_volume_series_number>:$<address>:$<proceedings_organization>:$<publisher>:$<date>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["techreport"] = U"[$<author>:$<title>:$<tech_rep_number>:$<institution>:$<address>:$<date>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates["unpublished"] = U"[$<author>:$<title>:$<note>:$<date>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.Templates[""] = LBibTeX.Styles.amsalpha.Templates["misc"]
-LBibTeX.Styles.amsalpha.Formatter = {}
+ams_styles.Templates["article"] = U"[$<author>:$<title>:<|$<journal>|< \\textbf{|$<volume>|}>< (|$<year>|)>>:<no.~|$<number>|>:$<pages>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["book"] = U"[$<author|editor>:$<title>:$<edition>:$<book_volume_series_number>:$<publisher>:$<address>:$<date>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["booklet"] = U"[$<author>:$<title>:$<howpublished>:$<address>:$<date>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["inbook"] = U"[$<author|editor>:$<title>:$<edition>:$<book_volume_series_number>:$<chapter_pages>:$<publisher>:$<address>:$<date>:@S<>$< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["incollection"] = U"[$<author>:$<title>:$<incollection_title_editor>:$<book_volume_series_number>:$<publisher>:$<address>:$<edition>:$<date>:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
+ams_styles.Templates["inproceedings"] = U"[$<author>:$<title>:<|$<booktitle>|< (|$<address>|)>< |$<editor_nonauthor>|>>:$<book_volume_series_number>:$<organization>:$<publisher>:$<date>:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
+ams_styles.Templates["conference"] = ams_styles.Templates[U"inproceedings"]
+ams_styles.Templates["manual"] = U"[$<author|organization_address>:$<title>:$<manual_organization_address_aftertittle>:$<edition>:$<date>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["mastersthesis"] = U"[$<author>:$<title>:$<master_thesis_type>:$<school>:$<address>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
+ams_styles.Templates["misc"] = U"[$<author>:$<title>:$<howpublished>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
+ams_styles.Templates["phdthesis"] = U"[$<author>:$<title>:$<phd_thesis_type>:$<school>:$<address>:$<date>:$<note>:$<book_pages>]$<mrnumfunc>"
+ams_styles.Templates["proceedings"] = U"[$<editor|organization>:$<title>:$<book_volume_series_number>:$<address>:$<proceedings_organization>:$<publisher>:$<date>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["techreport"] = U"[$<author>:$<title>:$<tech_rep_number>:$<institution>:$<address>:$<date>:$<note>]$<mrnumfunc>"
+ams_styles.Templates["unpublished"] = U"[$<author>:$<title>:$<note>:$<date>]$<mrnumfunc>"
+ams_styles.Templates[""] = ams_styles.Templates["misc"]
+ams_styles.Formatter = {}
 
-function LBibTeX.Styles.amsalpha.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
+function ams_styles.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
 
-function LBibTeX.Styles.amsalpha.Formatter:format_names(names)
+function ams_styles.Formatter:format_names(names)
 	local a = LBibTeX.split_names(names)
 	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
 	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:proceedings_organization(c)
+function ams_styles.Formatter:proceedings_organization(c)
 	if c.fields["editor"] ~= nil then return c.fields["organization"] end
 end
 
@@ -67,7 +66,7 @@ local function tie_or_space(x)
 	else return U" " .. x end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:tech_rep_number(c)
+function ams_styles.Formatter:tech_rep_number(c)
 	local r = c.fields[U"type"]
 	if r == nil then r = U"Tech. Report" end
 	if c.fields["number"] == nil then r = LBibTeX.change_case(r,U"t")
@@ -75,7 +74,7 @@ function LBibTeX.Styles.amsalpha.Formatter:tech_rep_number(c)
 	return r
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:manual_organization_address_aftertittle(c)
+function ams_styles.Formatter:manual_organization_address_aftertittle(c)
 	if c.fields["author"] == nil then
 		if c.fields["organization"] ~= nil then
 			return c.fields["address"]
@@ -84,14 +83,14 @@ function LBibTeX.Styles.amsalpha.Formatter:manual_organization_address_aftertitt
 	end
 end
 
-LBibTeX.Styles.amsalpha.Formatter.date = U"<<|$<month>| >|$<year>|>"
+ams_styles.Formatter.date = U"<<|$<month>| >|$<year>|>"
 
-function LBibTeX.Styles.amsalpha.Formatter:author(c)
+function ams_styles.Formatter:author(c)
 	if c.fields["author"] == nil then return nil
 	else return self:format_names(c.fields["author"]) end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:editor(c)
+function ams_styles.Formatter:editor(c)
 	local e = c.fields["editor"]
 	if e == nil then return nil
 	else
@@ -103,22 +102,22 @@ function LBibTeX.Styles.amsalpha.Formatter:editor(c)
 end
 
 
-function LBibTeX.Styles.amsalpha.Formatter:pages(c)
+function ams_styles.Formatter:pages(c)
 	if c.fields["pages"] == nil then return nil
 	else return c.fields["pages"]:gsub(U"([^-])-([^-])","%1--%2") end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:title(c)
+function ams_styles.Formatter:title(c)
 	if c.fields["title"] == nil then return nil
 	else return U"\\emph{" .. LBibTeX.change_case(c.fields["title"],"t") .. U"}" end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:edition(c)
+function ams_styles.Formatter:edition(c)
 	if c.fields["edition"] == nil then return nil
 	else return LBibTeX.change_case(c.fields["edition"],U"l") .. U" ed." end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:book_volume_series_number(c)
+function ams_styles.Formatter:book_volume_series_number(c)
 	if c.fields["series"] == nil then
 		if c.fields["volume"] == nil then
 			if c.fields["number"] == nil then return nil
@@ -135,8 +134,8 @@ function LBibTeX.Styles.amsalpha.Formatter:book_volume_series_number(c)
 	end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:chapter_pages(c)
-	if c.fields["chapter"] == nil then return LBibTeX.Styles.amsalpha.Formatter.book_pages(c)
+function ams_styles.Formatter:chapter_pages(c)
+	if c.fields["chapter"] == nil then return ams_styles.Formatter.book_pages(c)
 	else 
 		local r = U""
 		if c.fields["type"] == nil then r = U"ch.~"
@@ -148,7 +147,7 @@ function LBibTeX.Styles.amsalpha.Formatter:chapter_pages(c)
 	end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:book_pages(c)
+function ams_styles.Formatter:book_pages(c)
 	local p = c.fields["pages"]
 	if p ~= nil then
 		if p:find(U"[-,+]") == nil then return U"p.~" .. p
@@ -156,21 +155,21 @@ function LBibTeX.Styles.amsalpha.Formatter:book_pages(c)
 	end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:organization_address(c)
+function ams_styles.Formatter:organization_address(c)
 	return {c.fields["organization"], c.fields["address"]}
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:master_thesis_type(c)
+function ams_styles.Formatter:master_thesis_type(c)
 	if c.fields["type"] == nil then return U"Master's thesis"
 	else return c.fields["type"] end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:phd_thesis_type(c)
+function ams_styles.Formatter:phd_thesis_type(c)
 	if c.fields["type"] == nil then return U"Ph.D. thesis"
 	else return LBibTeX.change_case(c.fields["type"],"t") end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:incollection_title_editor(c)
+function ams_styles.Formatter:incollection_title_editor(c)
 	local r = c.fields["booktitle"]
 	if r == nil then r = U"" end
 	local e = self:editor_nonauthor(c)
@@ -179,7 +178,7 @@ function LBibTeX.Styles.amsalpha.Formatter:incollection_title_editor(c)
 	return r
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:editor_nonauthor(c)
+function ams_styles.Formatter:editor_nonauthor(c)
 	if c.fields["editor"] ~= nil then
 		local e = c.fields["editor"]
 		local r = U"(" .. self:format_names(e) .. U", ed"
@@ -190,23 +189,23 @@ function LBibTeX.Styles.amsalpha.Formatter:editor_nonauthor(c)
 	end
 end
 
-LBibTeX.Styles.amsalpha.Formatter.mrnumfunc = U"<\\MR{|$<mrnumber>|}>"
+ams_styles.Formatter.mrnumfunc = U"<\\MR{|$<mrnumber>|}>"
 
-LBibTeX.Styles.amsalpha.blockseparator = {U", "}
-LBibTeX.Styles.amsalpha.blocklast = {U". "}
+ams_styles.blockseparator = {U", "}
+ams_styles.blocklast = {U". "}
 
 
 -- cross reference
-LBibTeX.Styles.amsalpha.CrossReference = LBibTeX.CrossReference.new()
-LBibTeX.Styles.amsalpha.CrossReference.Templates = {}
-LBibTeX.Styles.amsalpha.CrossReference.Templates["article"] = U"[$<author>:$<title>:<in |$<key|journal>|> \\cite{$<crossref>}:$<pages>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.CrossReference.Templates["book"] = U"[$<author|editor>:$<title>:$<edition>:$<book_crossref> \\cite{$<crossref>}:$<date>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.CrossReference.Templates["inbook"] = U"[$<author|editor>:$<title>:$<edition>:$<chapter_pages>:$<book_crossref> \\cite{$<crossref>}:$<date>:@S<>$< (|$<language>|)>:$<note>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.CrossReference.Templates["incollection"] = U"[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.CrossReference.Templates["inproceedings"] = U"[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
-LBibTeX.Styles.amsalpha.CrossReference.Templates["conference"] = LBibTeX.Styles.amsalpha.CrossReference.Templates["inproceedings"]
+ams_styles.CrossReference = LBibTeX.CrossReference.new()
+ams_styles.CrossReference.Templates = {}
+ams_styles.CrossReference.Templates["article"] = U"[$<author>:$<title>:<in |$<key|journal>|> \\cite{$<crossref>}:$<pages>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.CrossReference.Templates["book"] = U"[$<author|editor>:$<title>:$<edition>:$<book_crossref> \\cite{$<crossref>}:$<date>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.CrossReference.Templates["inbook"] = U"[$<author|editor>:$<title>:$<edition>:$<chapter_pages>:$<book_crossref> \\cite{$<crossref>}:$<date>:@S<>$< (|$<language>|)>:$<note>]$<mrnumfunc>"
+ams_styles.CrossReference.Templates["incollection"] = U"[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
+ams_styles.CrossReference.Templates["inproceedings"] = U"[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>]$<mrnumfunc>"
+ams_styles.CrossReference.Templates["conference"] = ams_styles.CrossReference.Templates["inproceedings"]
 
-function LBibTeX.Styles.amsalpha.Formatter:book_crossref(c)
+function ams_styles.Formatter:book_crossref(c)
 	r = U""
 	if c.fields["volume"] == nil then r = U"in "
 	else r = U"vol." .. tie_or_space(c.fields["volume"]) .. U" of " end
@@ -222,7 +221,7 @@ function LBibTeX.Styles.amsalpha.Formatter:book_crossref(c)
 	return r
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:incollection_crossref(c)
+function ams_styles.Formatter:incollection_crossref(c)
 	if c.fields["editor"] ~= nil and c.fields["editor"] ~= c.fields["author"] then
 		return U"in " .. self:editor_crossref(c)
 	end
@@ -234,7 +233,7 @@ function LBibTeX.Styles.amsalpha.Formatter:incollection_crossref(c)
 	end
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:editor_crossref(c)
+function ams_styles.Formatter:editor_crossref(c)
 	local r = U""
 	local a = LBibTeX.split_names(c.fields["editor"])
 	r = r .. LBibTeX.format_name(a[1],"{vv~}{ll}")
@@ -243,7 +242,8 @@ function LBibTeX.Styles.amsalpha.Formatter:editor_crossref(c)
 	return r
 end
 
-function LBibTeX.Styles.amsalpha.Formatter:crossref(c)
+function ams_styles.Formatter:crossref(c)
 	return c.fields["crossref"]:lower()
 end
 
+return ams_styles
