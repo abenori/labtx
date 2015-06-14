@@ -5,7 +5,7 @@ require "lbt-crossref"
 local icu = require "lbt-string"
 local U = icu.ustring
 
-local std_styles = require "mod-std"
+local std_styles = require "lbt-style-std"
 
 ams_styles = {}
 ams_styles.macros = {}

@@ -23,7 +23,7 @@ end
 BibTeX,msg = LBibTeX.LBibTeX.new(file)
 if BibTeX == nil then print(msg) os.exit(1) end
 BibTeX:message(U"The top-level auxiliary file: " .. get_filename(file))
-local style = kpse.find_file(U.encode(BibTeX.style) .. "_bst.lua","lua")
+local style = kpse.find_file("lbt-" .. U.encode(BibTeX.style) .. "_bst.lua","lua")
 if style == nil then 
 	BibTeX:error(U"style " .. BibTeX.style .. U" is not found")
 	os.exit(3)

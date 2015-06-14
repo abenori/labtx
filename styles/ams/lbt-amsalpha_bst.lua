@@ -2,7 +2,7 @@ require "lbt-funcs"
 require "lbt-template"
 local icu = require "lbt-string"
 local U = icu.ustring
-require "mod-ams"
+require "lbt-style-ams"
 
 for v,k in pairs(LBibTeX.Styles.ams.macros) do
 	BibTeX.macros[v] = k

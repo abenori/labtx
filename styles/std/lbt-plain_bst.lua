@@ -1,6 +1,6 @@
 require "lbt-funcs"
 require "lbt-template"
-std_styles = require "mod-std"
+std_styles = require "lbt-style-std"
 local icu = require "lbt-string"
 local U = icu.ustring
 
