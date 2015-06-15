@@ -14,10 +14,7 @@ BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 -- sort
 BibTeX.cites = std_styles.sort(BibTeX.cites)
 
-LBibTeX.Template.blockseparator = std_styles.blockseparator
-LBibTeX.Template.blocklast = std_styles.blocklast
-
-local f1 = LBibTeX.Template.make(std_styles.Templates,std_styles.Formatter)
-local f2 = LBibTeX.Template.make(std_styles.CrossReference.Templates,std_styles.Formatter)
+local f1 = std_styles.Template:make(std_styles.Template.Templates,std_styles.Template.Formatter)
+local f2 = std_styles.Template:make(std_styles.CrossReference.Templates,std_styles.Template.Formatter)
 local f = std_styles.CrossReference:make_formatter(f1,f2)
 BibTeX:outputthebibliography(f)

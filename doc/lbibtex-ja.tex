@@ -531,14 +531,19 @@ typeは文献のタイプです．
 \subsection{lbt-template}
 文献一覧の整形を行う関数の生成を補助します．
 
-\subsubsection{function LBibTeX.Template.make(templs,funcs)}
+\subsubsection{function LBibTeX.Template.new()}
+新たなテーブルを作ります．
+\verb|setmetatable(obj,{__index = LBibTeX.Template})|されています．
+
+
+\subsubsection{function LBibTeX.Template:make(templs,funcs)}
 \begin{lstlisting}
 templs["article"] = "[$<author|editor>:<\\emph{|$<title>|}>]"
 \end{lstlisting}
 のようなtemplsから，文献一覧の整形を行う関数を生成します．（LBibTeX.LBibTeX:outputcitesに直接渡せるもの．）
 この文字列は次のような意味を持ちます．
 \begin{itemize}
-\item \verb|[A:B:...:X]|：「ブロック」を表します．最終的にはこれは\verb|A<sep>B<sep>....<sep>X<last>|となります．ただし，空文字列の時は省略されます．（\verb|[A:B:C]|でBが空ならば\verb|A<sep>C<last>|となる．）ブロックはネストが可能です．\verb|<sep>|や\verb|<last>|はそれぞれLBibTeX.Template.blockseparator[nestlevel]及びLBibTeX.Template.blocklast[nestlevel]で指定します．
+\item \verb|[A:B:...:X]|：「ブロック」を表します．最終的にはこれは\verb|A<sep>B<sep>....<sep>X<last>|となります．ただし，空文字列の時は省略されます．（\verb|[A:B:C]|でBが空ならば\verb|A<sep>C<last>|となる．）ブロックはネストが可能です．\verb|<sep>|や\verb|<last>|はそれぞれself.blockseparator[nestlevel]及びself.blocklast[nestlevel]で指定します．
 \verb|<sep>|は一時的に変更することも可能です．\verb|[A:B:@S<special sep>C:D]|は，\verb|A<sep>B<special sep>C<sep>D<last>|となります．ただし，Cが空文字列の場合は\verb|A<sep>B<sep>D<last>|となります．また，\verb|<sep>|や\verb|<last>|の処理によりピリオドが続いた場合，ピリオドを削除します．例えば\verb|[string A.]|で\verb|<last>|が\verb|"."|であった場合は，「string A..」ではなく，「string A.」となります．
 \item \verb:<A|B|C>:は，Bが空文字列ならば空文字列に，そうでなければABCになります．
 \item \verb:$<A|B|...>:

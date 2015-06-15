@@ -42,13 +42,9 @@ BibTeX:read()
 std_styles.CrossReference:modify_citations(BibTeX)
 BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
-LBibTeX.Template.blockseparator = std_styles.blockseparator
-LBibTeX.Template.blocklast = std_styles.blocklast
+function std_styles.Template.Formatter:nameformat(c) return "{f.~}{vv~}{ll}{, jj}" end
 
-local formatter = std_styles.Formatter
-function formatter:nameformat(c) return "{f.~}{vv~}{ll}{, jj}" end
-
-local f1 = LBibTeX.Template.make(std_styles.Templates,std_styles.Formatter)
-local f2 = LBibTeX.Template.make(std_styles.CrossReference.Templates,std_styles.Formatter)
+local f1 = std_styles.Template:make(std_styles.Template.Templates,std_styles.Template.Formatter)
+local f2 = std_styles.Template:make(std_styles.CrossReference.Templates,std_styles.Template.Formatter)
 local f = std_styles.CrossReference:make_formatter(f1,f2)
 BibTeX:outputthebibliography(f)

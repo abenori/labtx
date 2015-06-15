@@ -200,47 +200,47 @@ function std_styles.sort(cites,array,formatter,equals,lessthan)
 	return cites
 end
 
-std_styles.blockseparator = {}
-std_styles.blockseparator[1] = ".\n\\newblock "
-std_styles.blockseparator[2] = ", "
-std_styles.blocklast = {}
-std_styles.blocklast[1] = "."
-std_styles.blocklast[2] = ". "
+std_styles.Template = LBibTeX.Template.new()
 
-std_styles.Templates = {}
-std_styles.Templates["article"] = "[$<author>:$<title>:[$<journal>:$<volume_number_pages>:$<date>]:$<note>]"
-std_styles.Templates["book"] = "[$<author|editor>:[$<btitle>:$<book_volume>]:[<Number|$<number_if_not_volume>| in >$<series_if_not_volume>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
-std_styles.Templates["booklet"] = "[$<author>:$<title>:[$<howpublished>:$<address>:$<date>]:$<note>]"
-std_styles.Templates["inbook"] = "[$<author|editor>:[$<btitle>:$<book_volume>:$<chapter_pages>]:[<Number|$<number_if_not_volume>| in >$<series_if_not_volume>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
-std_styles.Templates["incollection"] = "[$<author>:$<title>:[In <|$<editor>|, ><{\\em |$<booktitle>|}>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<chapter_pages>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
-std_styles.Templates["inproceedings"] = "[$<author>:$<title>:[In <|$<editor>|, ><{\\em |$<booktitle>|}>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<pages>:$<address>:$<date_if_address>:@S<. >$<organization_if_editor_publisher>:$<date_if_not_address>]:$<note>]"
-std_styles.Templates["conference"] = std_styles.Templates["incollection"]
-std_styles.Templates["manual"] = "[[$<author|organization_address>]:$<btitle>:[$<organization>:$<address>:$<edition>:$<date>]:$<note>]"
-std_styles.Templates["mastersthesis"] = "[$<author>:$<title>:[$<master_thesis_type>:$<school>:$<address>:$<date>]:$<note>]"
-std_styles.Templates["misc"] = "[$<author>:$<title>:[$<howpublished>:$<date>]:$<note>]"
-std_styles.Templates["phdthesis"] = "[$<author>:$<btitle>:[$<phd_thesis_type>:$<school>:$<address>:$<date>]:$<note>]"
-std_styles.Templates["proceedings"] = "[$<editor|organization>:[$<btitle>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<address>:$<date_if_address>:@S<. >$<organization_if_editor_publisher>:$<date_if_not_address>]:$<note>]"
-std_styles.Templates["techreport"] = "[$<author>:$<title>:[$<tr_number>:$<institution>:$<address>:$<date>]:$<note>]"
-std_styles.Templates["unpublished"] = "[$<author>:$<title>:[$<note>:$<date>]]"
-std_styles.Templates[""] = std_styles.Templates["misc"]
+std_styles.Template.blockseparator[1] = ".\n\\newblock "
+std_styles.Template.blockseparator[2] = ", "
+std_styles.Template.blocklast[1] = "."
+std_styles.Template.blocklast[2] = ". "
 
-std_styles.Formatter = {}
-std_styles.Formatter.date = U"<<|$<month>| >|$<year>|>"
+std_styles.Template.Templates = {}
+std_styles.Template.Templates["article"] = "[$<author>:$<title>:[$<journal>:$<volume_number_pages>:$<date>]:$<note>]"
+std_styles.Template.Templates["book"] = "[$<author|editor>:[$<btitle>:$<book_volume>]:[<Number|$<number_if_not_volume>| in >$<series_if_not_volume>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
+std_styles.Template.Templates["booklet"] = "[$<author>:$<title>:[$<howpublished>:$<address>:$<date>]:$<note>]"
+std_styles.Template.Templates["inbook"] = "[$<author|editor>:[$<btitle>:$<book_volume>:$<chapter_pages>]:[<Number|$<number_if_not_volume>| in >$<series_if_not_volume>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
+std_styles.Template.Templates["incollection"] = "[$<author>:$<title>:[In <|$<editor>|, ><{\\em |$<booktitle>|}>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<chapter_pages>][$<publisher>:$<address>:$<edition>:$<date>]:$<note>]"
+std_styles.Template.Templates["inproceedings"] = "[$<author>:$<title>:[In <|$<editor>|, ><{\\em |$<booktitle>|}>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<pages>:$<address>:$<date_if_address>:@S<. >$<organization_if_editor_publisher>:$<date_if_not_address>]:$<note>]"
+std_styles.Template.Templates["conference"] = std_styles.Template.Templates["incollection"]
+std_styles.Template.Templates["manual"] = "[[$<author|organization_address>]:$<btitle>:[$<organization>:$<address>:$<edition>:$<date>]:$<note>]"
+std_styles.Template.Templates["mastersthesis"] = "[$<author>:$<title>:[$<master_thesis_type>:$<school>:$<address>:$<date>]:$<note>]"
+std_styles.Template.Templates["misc"] = "[$<author>:$<title>:[$<howpublished>:$<date>]:$<note>]"
+std_styles.Template.Templates["phdthesis"] = "[$<author>:$<btitle>:[$<phd_thesis_type>:$<school>:$<address>:$<date>]:$<note>]"
+std_styles.Template.Templates["proceedings"] = "[$<editor|organization>:[$<btitle>:$<book_volume>:<number|$<number_if_not_volume>| in >$<series_if_not_volume>:$<address>:$<date_if_address>:@S<. >$<organization_if_editor_publisher>:$<date_if_not_address>]:$<note>]"
+std_styles.Template.Templates["techreport"] = "[$<author>:$<title>:[$<tr_number>:$<institution>:$<address>:$<date>]:$<note>]"
+std_styles.Template.Templates["unpublished"] = "[$<author>:$<title>:[$<note>:$<date>]]"
+std_styles.Template.Templates[""] = std_styles.Template.Templates["misc"]
 
-function std_styles.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
+std_styles.Template.Formatter = {}
+std_styles.Template.Formatter.date = U"<<|$<month>| >|$<year>|>"
 
-function std_styles.Formatter:format_names(names)
+function std_styles.Template.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
+
+function std_styles.Template.Formatter:format_names(names)
 	local a = LBibTeX.split_names(names)
 	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
 	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
-function std_styles.Formatter:author(c)
+function std_styles.Template.Formatter:author(c)
 	if c.fields["author"] == nil then return nil
 	else return self:format_names(c.fields["author"]) end
 end
 
-function std_styles.Formatter:volume_number_pages(c)
+function std_styles.Template.Formatter:volume_number_pages(c)
 	local v = c.fields["volume"]
 	if v == nil then v = U"" end
 	local n = c.fields["number"]
@@ -253,7 +253,7 @@ function std_styles.Formatter:volume_number_pages(c)
 	return v .. n .. p
 end
 
-function std_styles.Formatter:editor(c)
+function std_styles.Template.Formatter:editor(c)
 	if c.fields["editor"] == nil then return nil end
 	local a = LBibTeX.split_names(c.fields["editor"])
 	local r = self:format_names(c.fields["editor"]) .. U", editor"
@@ -261,17 +261,17 @@ function std_styles.Formatter:editor(c)
 	return r
 end
 
-function std_styles.Formatter:title(c)
+function std_styles.Template.Formatter:title(c)
 	if c.fields["title"] == nil then return nil
 	else return LBibTeX.change_case(c.fields["title"],"t") end
 end
 
-function std_styles.Formatter:btitle(c)
+function std_styles.Template.Formatter:btitle(c)
 	if c.fields["title"] == nil then return nil
 	else return U"{\\em " .. c.fields["title"] .. U"}" end
 end
 
-function std_styles.Formatter:journal(c)
+function std_styles.Template.Formatter:journal(c)
 	if c.fields["journal"] == nil then return nil
 	else return U"{\\em " .. c.fields["journal"] .. U"}" end
 end
@@ -281,12 +281,12 @@ local function tie_or_space(x)
 	else return U" " .. x end
 end
 
-function std_styles.Formatter:edition(c)
+function std_styles.Template.Formatter:edition(c)
 	if c.fields["edition"] == nil then return nil
 	else return LBibTeX.change_case(c.fields["edition"],"l") .. U" edition" end
 end
 
-function std_styles.Formatter:organization_if_editor_publisher(c)
+function std_styles.Template.Formatter:organization_if_editor_publisher(c)
 	local r = nil
 	if c.fields["editor"] ~= nil then r = c.fields["organization"] end
 	if r == nil then r = U"" end
@@ -297,7 +297,7 @@ function std_styles.Formatter:organization_if_editor_publisher(c)
 	return r
 end
 
-function std_styles.Formatter:pages(c)
+function std_styles.Template.Formatter:pages(c)
 	local p = c.fields["pages"]
 	if p ~= nil then
 		if p:find(U"[-,+]") == nil then return U"page" .. tie_or_space(p)
@@ -305,22 +305,22 @@ function std_styles.Formatter:pages(c)
 	else return nil end
 end
 
-function std_styles.Formatter:book_volume(c)
+function std_styles.Template.Formatter:book_volume(c)
 	if c.fields["volume"] == nil then return nil end
 	local r = U"volume" .. tie_or_space(c.fields["volume"])
 	if c.fields["series"] ~= nil then r = r .. U" of {\\em " .. c.fields["series"] .. U"}" end
 	return r
 end
 
-function std_styles.Formatter:number_if_not_volume(c)
+function std_styles.Template.Formatter:number_if_not_volume(c)
 	if c.fields["volume"] == nil and c.fields["number"] ~= nil then return tie_or_space(c.fields["number"]) end
 end
 
-function std_styles.Formatter:series_if_not_volume(c)
+function std_styles.Template.Formatter:series_if_not_volume(c)
 	if c.fields["volume"] == nil and c.fields["series"] ~= nil then return c.fields["series"] end
 end
 
-function std_styles.Formatter:chapter_pages(c)
+function std_styles.Template.Formatter:chapter_pages(c)
 	if c.fields["chapter"] == nil then return self:pages(c) end
 	local r = U""
 	if c.fields["type"] == nil then r = U"chapter"
@@ -330,22 +330,22 @@ function std_styles.Formatter:chapter_pages(c)
 	return r
 end
 
-function std_styles.Formatter:proceedings_organization_publisher(c)
+function std_styles.Template.Formatter:proceedings_organization_publisher(c)
 	if c.fields["editor"] == nil then return c.fields["publisher"]
 	else return c.fields["organization"] end
 end
 
-function std_styles.Formatter:master_thesis_type(c)
+function std_styles.Template.Formatter:master_thesis_type(c)
 	if c.fields["type"] == nil then return U"Master's thesis"
 	else return LBibTeX.change_case(c.fields["type"],"t") end
 end
 
-function std_styles.Formatter:phd_thesis_type(c)
+function std_styles.Template.Formatter:phd_thesis_type(c)
 	if c.fields["type"] == nil then return U"PhD thesis"
 	else return LBibTeX.change_case(c.fields["type"],"t") end
 end
 
-function std_styles.Formatter:tr_number(c)
+function std_styles.Template.Formatter:tr_number(c)
 	local r = c.fields["type"]
 	if r == nil then r = U"Technical Report" end
 	if c.fields["number"] == nil then r = LBibTeX.change_case(r,"t")
@@ -353,11 +353,11 @@ function std_styles.Formatter:tr_number(c)
 	return r
 end
 
-function std_styles.Formatter:date_if_address(c)
+function std_styles.Template.Formatter:date_if_address(c)
 	if c.fields["address"] ~= nil then return self:date(c) end
 end
 
-function std_styles.Formatter:date_if_not_address(c)
+function std_styles.Template.Formatter:date_if_not_address(c)
 	if c.fields["address"] == nil then return self:date(c) end
 end
 
@@ -368,18 +368,18 @@ std_styles.CrossReference.Templates["book"] = "[$<author|editor>:$<btitle>:[$<bo
 std_styles.CrossReference.Templates["inbook"] = "[$<author|editor>:[$<btitle>:$<chapter_pages>]:[$<book_crossref>  \\cite{$<crossref>}:$<edition>:$<date>]:$<note>]"
 std_styles.CrossReference.Templates["incollection"] = "[$<author>:$<title>:[$<incollection_crossref> \\cite{$<crossref>}:$<chapter_pages>]:$<note>]"
 std_styles.CrossReference.Templates["inproceedings"] = "[$<author>:$<title>:[$<incollection_crossref> \\cite{$<crossref>}:$<chapter_pages>]:$<note>]"
-std_styles.CrossReference.Templates["conference"] = std_styles.Templates["inproceedings"]
+std_styles.CrossReference.Templates["conference"] = std_styles.CrossReference.Templates["inproceedings"]
 
-function std_styles.Formatter:crossref(c)
+function std_styles.Template.Formatter:crossref(c)
 	return c.fields["crossref"]:lower()
 end
 
-function std_styles.Formatter:journal_crossref(c)
+function std_styles.Template.Formatter:journal_crossref(c)
 	if c.fields["journal"] == nil then return nil
 	else return U"{\\em " .. c.fields["journal"] .. U"\\/}" end
 end
 
-function std_styles.Formatter:book_crossref(c)
+function std_styles.Template.Formatter:book_crossref(c)
 	r = U""
 	if c.fields["volume"] == nil then r = U"In "
 	else r = U"Volume" .. tie_or_space(c.fields["volume"]) .. U" of " end
@@ -391,7 +391,7 @@ function std_styles.Formatter:book_crossref(c)
 	return r
 end
 
-function std_styles.Formatter:editor_crossref(c)
+function std_styles.Template.Formatter:editor_crossref(c)
 	local r = U""
 	local a = LBibTeX.split_names(c.fields["editor"])
 	r = r .. LBibTeX.format_name(a[1],"{vv~}{ll}")
@@ -400,7 +400,7 @@ function std_styles.Formatter:editor_crossref(c)
 	return r
 end
 
-function std_styles.Formatter:incollection_crossref(c)
+function std_styles.Template.Formatter:incollection_crossref(c)
 	local r = U""
 	if c.fields["editor"] ~= nil or c.fields["editor"] == c.fields["author"] then
 		return U"In " .. self:editor_crossref(c)

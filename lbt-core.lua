@@ -294,7 +294,7 @@ end
 
 function LBibTeX.LBibTeX:get_longest_label()
 	local max_len = 0
-	local max_len_label = emptystr
+	local max_len_label = nil
 	for i = 1, #self.cites do
 		local label
 		if self.cites[i].label ~= nil then
@@ -352,13 +352,8 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 end
 
 function LBibTeX.LBibTeX:outputthebibliography(formatter)
-	local use_label = false
-	for i = 1,#self.cites do
-		if self.cites[i].label ~= nil then use_label = true break end
-	end
-	local longest_label
-	if use_label then longest_label = self:get_longest_label()
-	else use_label = U(tostring(#self.cites)) end
+	local longest_label = self:get_longest_label()
+	if longest_label == nil then longest_label = U(tostring(#self.cites)) end
 	self:outputline(self.preamble)
 	self:outputline(U"\\begin{thebibliography}{" .. longest_label .. U"}")
 	self:outputcites(formatter)

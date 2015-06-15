@@ -146,7 +146,7 @@ end
 local MakeTemplateImpl
 
 -- [A:B:C:...]
-local function MakeBlockFunction(array,funcs,blocknest)
+function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 	local f = {}
 	local seps = {}
 	for i = 1,#array do
@@ -154,16 +154,16 @@ local function MakeBlockFunction(array,funcs,blocknest)
 			if array[i]:sub(2,2) == U"S" then 
 				local a,r = GetArrayOfBlocks(array[i],U"<",U">",nil,4)
 				if a == nil then return nil end
-				seps[i] = MakeTemplateImpl(a[1],funcs,blocknest + 1)
+				seps[i] = self:MakeTemplateImpl(a[1],funcs,blocknest + 1)
 				array[i] = array[i]:sub(r)
 			end
 		end
-		local ff = MakeTemplateImpl(array[i],funcs,blocknest + 1)
+		local ff = self:MakeTemplateImpl(array[i],funcs,blocknest + 1)
 		if ff == nil then return nil end
 		table.insert(f,ff)
 	end
 	return function(c)
-		local block = LBibTeX.block.new(LBibTeX.Template.blockseparator[blocknest],LBibTeX.Template.blocklast[blocknest])
+		local block = LBibTeX.block.new(self.blockseparator[blocknest],self.blocklast[blocknest])
 		local sepnumber = 1
 		for i = 1, #f do
 			local a = f[i](c)
@@ -176,10 +176,10 @@ local function MakeBlockFunction(array,funcs,blocknest)
 end
 
 -- <A|B|C>
-local function MakeStringFunction(array,funcs,bocknest)
-	local f1 = MakeTemplateImpl(array[1],funcs,blocknest)
-	local f2 = MakeTemplateImpl(array[2],funcs,blocknest)
-	local f3 = MakeTemplateImpl(array[3],funcs,blocknest)
+function LBibTeX.Template:MakeStringFunction(array,funcs,bocknest)
+	local f1 = self:MakeTemplateImpl(array[1],funcs,blocknest)
+	local f2 = self:MakeTemplateImpl(array[2],funcs,blocknest)
+	local f3 = self:MakeTemplateImpl(array[3],funcs,blocknest)
 	if f1 == nil or f2 == nil or f3 == nil then return nil end
 	return function(c)
 		local x = U""
@@ -195,7 +195,7 @@ local function MakeStringFunction(array,funcs,bocknest)
 end
 
 -- $<A|B|C|...>
-local function MakeFormatFunction(array,funcs)
+function LBibTeX.Template:MakeFormatFunction(array,funcs)
 	local ff = {}
 	for i = 1,#array do
 		local f = funcs[array[i]]
@@ -240,7 +240,7 @@ function UnEscape(str)
 	return str:gsub(U"%%(.)",U"%1")
 end
 
-MakeTemplateImpl = function(templ,funcs,blocknest)
+LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 	local bra = findUnescaped(templ,U"%[<",1)
 	if bra == nil then
 		return function(c) return string_to_array(UnEscape(templ)) end
@@ -252,8 +252,8 @@ MakeTemplateImpl = function(templ,funcs,blocknest)
 			LBibTeX.Template.LastMsg = U"template error found in " .. templ
 			return nil
 		end
-		local f1 = MakeBlockFunction(array,funcs,blocknest)
-		local f2 = MakeTemplateImpl(templ:sub(r),funcs,blocknest)
+		local f1 = self:MakeBlockFunction(array,funcs,blocknest)
+		local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
 		if f1 == nil or f2 == nil then return nil end
 		return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 1))),f1(c)),f2(c)) end
 	else
@@ -273,8 +273,8 @@ MakeTemplateImpl = function(templ,funcs,blocknest)
 				LBibTeX.Template.LastMsg = U"template error found in " .. templ
 				return nil
 			end
-			local f1 = MakeStringFunction(array,funcs,blocknest)
-			local f2 = MakeTemplateImpl(templ:sub(r),funcs,blocknest)
+			local f1 = self:MakeStringFunction(array,funcs,blocknest)
+			local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
 			if f1 == nil or f2 == nil then return nil end
 			return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 1))),f1(c)),f2(c)) end
 		else
@@ -284,8 +284,8 @@ MakeTemplateImpl = function(templ,funcs,blocknest)
 				LBibTeX.Template.LastMsg = U"template error found in " .. templ
 				return nil
 			end
-			local f1 = MakeFormatFunction(array,funcs)
-			local f2 = MakeTemplateImpl(templ:sub(r),funcs,blocknest)
+			local f1 = self:MakeFormatFunction(array,funcs)
+			local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
 			if f1 == nil or f2 == nil then return nil end
 			return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 2))),f1(c)),f2(c)) end
 		end
@@ -293,11 +293,9 @@ MakeTemplateImpl = function(templ,funcs,blocknest)
 end
 
 
-LBibTeX.Template.blockseparator = {}
-LBibTeX.Template.blocklast = {}
 LBibTeX.Template.LastMsg = U""
 
-local function ModifyFunctions(funcs)
+function LBibTeX.Template:modify_functions(funcs)
 	local funcs_u = {}
 	for k,v in pairs(funcs) do
 		local kk
@@ -310,7 +308,7 @@ local function ModifyFunctions(funcs)
 		local changed = false
 		for k,v in pairs(funcs_u) do
 			if type(v) ~= "function" then
-				local f = LBibTeX.Template.make_from_str(v,funcs_u)
+				local f = self:make_from_str(v,funcs_u)
 				if f ~= nil then
 					ff[k] = function(dummy,c) return f(c) end
 					changed = true
@@ -331,10 +329,10 @@ local function ModifyFunctions(funcs)
 	return ff
 end
 
-function LBibTeX.Template.make_from_str(templ,funcs)
+function LBibTeX.Template:make_from_str(templ,funcs)
 	LBibTeX.Template.LastMsg = U""
 	if type(templ) == "string" then templ = U(templ) end
-	local f = MakeTemplateImpl(templ,funcs,1)
+	local f = self:MakeTemplateImpl(templ,funcs,1)
 	if f == nil then
 		print(LBibTeX.Template.LastMsg)
 		return nil
@@ -344,15 +342,19 @@ function LBibTeX.Template.make_from_str(templ,funcs)
 	end
 end
 
-function LBibTeX.Template.make(templs,funcs)
+function LBibTeX.Template:make(templs,funcs)
 	local f = {}
 	local ff
-	local funcs_f = ModifyFunctions(funcs)
+	local funcs_f = self:modify_functions(funcs)
 	for k,v in pairs(templs) do
-		ff = LBibTeX.Template.make_from_str(v,funcs_f)
+		ff = self:make_from_str(v,funcs_f)
 		if ff == nil then return nil end
 		f[k] = ff
 	end
 	return f
 end
 
+function LBibTeX.Template.new()
+	local obj = {blockseparator = {},blocklast = {}}
+	return setmetatable(obj,{__index = LBibTeX.Template})
+end
