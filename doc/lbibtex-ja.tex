@@ -1,0 +1,631 @@
+\documentclass[dvipdfmx,a4paper]{jsarticle}
+\usepackage{url}
+\usepackage{listings,jlisting}
+\usepackage[rgb, x11names]{xcolor}
+\lstdefinestyle{Lua}{%
+  language=[5.2]Lua,
+  basicstyle=\ttfamily,
+  columns=spaceflexible,
+  keywordstyle=\bfseries\color{Blue4},% language keywords
+  keywordstyle=[2]\bfseries\color{RoyalBlue3},% std. library identifiers
+  keywordstyle=[3]\bfseries\color{Purple3},% labels
+  stringstyle=\bfseries\color{Coral4},% strings
+  commentstyle=\gtfamily\color{Green4},% comments
+}
+\lstset{style=Lua,tabsize=2,showspaces=false}
+\DeclareRobustCommand{\LBibTeX}{L\BibTeX}
+
+
+
+\title{\LBibTeX}
+\date{}
+\begin{document}
+\maketitle
+Luaによる\BibTeX の実装です．
+
+\section{使い方}
+拡張子がluaであるファイルを全てkpathseaが探せる場所においてください．
+例えばTeXLiveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．
+
+\begin{quote}
+\verb|$ bibtex sample|
+\end{quote}
+としていた代わりに
+\begin{quote}
+\verb|$ texlua lbibtex sample|
+\end{quote}
+としてください．つまり，sample.texを処理するには
+\begin{quote}
+\begin{verbatim}
+$ latex sample.tex
+$ texlua lbibtex sample
+$ latex sample.tex
+$ latex sample.tex
+\end{verbatim}
+\end{quote}
+とします．
+（現在のところ）オプションはありません．
+文字コードは（現在のところ）UTF-8に限定されています．
+
+シェルスクリプトやバッチファイルにしておくと便利かもしません．例えばWindowsの場合は，以下の内容をlbibtex.batとしてPATH内にあるフォルダに保存しておけば，\verb|$ lbibtex sample|
+として起動することができます．
+\begin{verbatim}
+@echo off
+for /F "usebackq" %%i in (`kpsewhich lbibtex.lua`) do (
+  set LBIBTEXLUA="%%i"
+)
+texlua %LBIBTEXLUA% %1 %2 %3 %4 %5 %6 %7 %8 %9
+\end{verbatim}
+
+\section{データベースについて}
+次のようなデータベースを読みます．
+\begin{verbatim}
+Database = (Ignored '@' Entry)*
+Ignored = [^@]*
+Entry = Preamble|Comment|String|Data
+Comment = "comment" ('{' Name '}'| '(' Name ')')
+Preamble = "preamble" ('{' Name '}'| '(' Name ')')
+String = "string" ('{' Fields '}'|'(' Fields ')')
+Data = Entry_Type ('{' Entry_Key ',' Fields '}'|'(' Entry_Key ',' Fields ')')
+Entry_Type = [^{(]*
+Entry_Key = Name
+Fields = Field? (,Field)* ','?
+Field = Key '=' Value
+Key = Name
+Value = Name
+Name = ([^{}"]+ | '"'[^"]*'"' | '{' Name '}')*
+\end{verbatim}
+
+\begin{itemize}
+\item Ignoredは無視されます．通常空白と改行のみを含みます．（ただし，この部分をコメントとして用いることも可能です．）
+\item Commentはコメントです．無視されます．
+\item Preambleはそのままbblに書き出されることが想定されています．
+\item Stringはマクロを定義します．これは後述の「文字列連結機能」にて用いられます．
+\item Dataが文献情報を表します．Entry\_Key をエントリーキー，Fieldをフィールドと呼ぶことにします．フィールドはキー（Key）と値（Value）からなります．またEntry\_Type をこのエントリーのタイプと呼ぶことにします．
+\end{itemize}
+
+Preamble内のName，Field内のValueには「文字列連結」が適用されます．
+\begin{verbatim}
+Value = EachString ('#' EachString)*
+EachString = ([^#{}"]* | '"' [^"]* '"' | '{' EachString '}')*
+\end{verbatim}
+各々のEachStringには以下の処理が施されます．
+\begin{itemize}
+\item 前後の空白は全て無視されます．
+\item EachStringと同じ文字列がマクロとして定義されていた場合，対応する文字列に変更されます．
+\item 最後に，最初及び最後の\verb|"{}|は削除されます．
+\end{itemize}
+マクロの定義はStringでされているものの他，スタイルファイル内で定義されているものも入ります．
+
+
+\section{スタイルファイルの書き方}
+Lua言語によりスタイルを記述することができます．kpathseaから見える場所に\verb|lbt-<style>_bst.lua|として保存してください．（\verb|<style>|はスタイル名．）
+標準のplain, alpha, abbrv, unsrtに対応するファイルは既に用意されています．
+
+次はplainスタイルファイルです．
+\begin{lstlisting}
+-- lbt-plain_bst.lua
+-- ライブラリをロード
+require "lbt-template"
+-- 「標準的な」スタイルをロード
+std_styles = require "lbt-style-std"
+-- ICU4Lua文字列の利用
+local icu = require "lbt-string"
+local U = icu.ustring
+
+-- マクロ設定
+for v,k in pairs(std_styles.macros) do
+	BibTeX.macros[v] = k
+end
+
+-- データベース読み込み
+BibTeX:read()
+-- cross referenceされているエントリーを追加
+std_styles.CrossReference:modify_citations(BibTeX)
+-- 引用されている文献データをチェックし，必要ならばwarningを出す．
+BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
+
+-- ソート
+BibTeX.cites = std_styles.sort(BibTeX.cites)
+
+-- 出力
+LBibTeX.Template.blockseparator = std_styles.blockseparator
+LBibTeX.Template.blocklast = std_styles.blocklast
+local f1 = LBibTeX.Template.make(std_styles.Templates,std_styles.Formatter)
+local f2 = LBibTeX.Template.make(
+	std_styles.CrossReference.Templates,
+	std_styles.Formatter)
+local f = std_styles.CrossReference:make_formatter(f1,f2)
+BibTeX:outputthebibliography(f)
+-- end of file
+\end{lstlisting}
+
+このように，スタイルファイルは通常のLuaによるソースファイルです．
+変数\verb|BibTeX|を通じて，現在の状態を取得し，また整形した文献一覧を出力することができます．
+LBibTeX.LBibTeX.newにより生成されています．
+節\ref{subsec:lbt-core}を参考にしてください．
+
+\verb|require "lbt-style-std"|により標準的なスタイルを読み込み，それをそのまま活用しています．
+実際にオリジナルのスタイルファイルを作成する際には，\verb|std_styles.Templates,std_styles.Formatter|をそのまま使うことは難しいでしょう．
+例えば次のように新しく定義を行います．（説明のためのもので非常に単純なため，実際には使えません．）
+\begin{lstlisting}
+local templates = {}
+-- article用のテンプレート定義
+templates["article"] = "[$<auhor>:$<title>:$<journal>:$<year>]"
+local formatter = {}
+function formatter:author(c)
+	if c.fields["author"] == nil then return nil end
+	local a = LBibTeX.split_names(c.fields["author"])
+	if #a <= 2 then
+		return LBibTeX.make_name_list(a,"{ff~}{vv~}{ll}{, jj}",{", "," and "},", et~al.")
+	else
+		return LBibTeX.make_name_list(a,"{ff~}{vv~}{ll}{, jj}",{", ",", and "},", et~al.")
+	end
+end
+function formatter:title(c)
+	if c.fields["title"] == nil then return nil end
+	return LBibTeX.change_case(c.fields["title"],"t")
+end
+-- cross referenceのあるarticle用のテンプレート定義
+local cross_ref_templates = {}
+cross_ref_templates["article"] = "[$<auhor>:$<title>:$<journal> \\cite{$<crossref>}]"
+\end{lstlisting}
+ここではarticleに対応するフォーマットを定義しています．（定義に用いられている記法についてはLBibTeX.Template（節\ref{}）を参照．）
+もちろん，実際には他のタイプ（book等）に対しても定義をしなければなりません．
+このように定義された\verb|templates, formatter, cross_ref_templates|を用いて，
+\begin{lstlisting}
+-- 出力
+LBibTeX.Template.blockseparator[1] = ", "
+LBibTeX.Template.blocklast[1] = ". "
+local f1 = LBibTeX.Template.make(templates,formatter)
+local f2 = LBibTeX.Template.make(cross_ref_templates,formatter)
+local f = std_styles.CrossReference:make_formatter(f1,f2)
+BibTeX:outputthebibliography(f)
+\end{lstlisting}
+とすると，例えば次の用に出力されます．
+\begin{lstlisting}[language={[latex]TeX}]
+\bibitem Noriyuki Abe, A title of something, journal, 2015.
+\end{lstlisting}
+
+plainスタイルですので，\verb|\bibitem|はオプション無しで定義されています．
+alphaスタイルのようにするには，\verb|BibTeX.cites|の各項目のlabelを設定します．
+\begin{lstlisting}
+for i = 1,#BibTeX.cites do
+	BibTeX.cites[i].label = std_styles.make_label(BibTeX.cites[i])
+end
+
+BibTeX.cites = std_styles.sort(BibTeX.cites)
+
+-- 同じのが続いたら，末尾にabcとつける．
+local lastchar = string.byte("a") - 1
+local changed = false
+local lastname = nil
+for i = 1,#BibTeX.cites - 1 do
+	if BibTeX.cites[i].label == BibTeX.cites[i + 1].label then
+		lastchar = lastchar + 1
+		BibTeX.cites[i].label = BibTeX.cites[i].label .. U(string.char(lastchar))
+		changed = true
+	else
+		if changed then
+			lastchar = lastchar + 1
+			BibTeX.cites[i].label = BibTeX.cites[i].label .. U(string.char(lastchar))
+		end
+		lastchar = string.byte("a") - 1
+		changed = false
+	end
+end
+
+\end{lstlisting}
+[Abe15]のようなラベルが生成されます．\verb|std_styles.make_label|はこのような標準的なラベルを生成しますが，場合によっては生成するコードを書く必要があるかもしれません．
+
+ソートは，デフォルトでは「ラベル（あれば）」「名前」「年」「タイトル」の順番に比較されます．これを例えば「年」「タイトル」「yomiフィールド」とするならば，
+\begin{lstlisting}
+BibTeX.cites = std_styles.sort(BibTeX.cites,{"year","title","yomi"})
+\end{lstlisting}
+とします．
+もう少し柔軟な設定も可能ですので，lbt-style-std（節\ref{}）をご覧ください．
+
+\section{文字列}
+\LBibTeX は，Luaの通常の文字列では無く，内部ライブラリとしてICU4Luaを利用し，Unicodeにて文字を管理しています．
+文字列を作る際は以下のようにしてください．
+\begin{lstlisting}
+local icu = require "lbt-string"
+local U = icu.ustring
+local str = U"テストテキスト"
+\end{lstlisting}
+
+strはUnicodeで管理されたユーザ定義型の変数となります．
+通常の文字列に対して定義されている関数などは，この変数に対しても定義されています．
+例えば
+\begin{lstlisting}
+local str = U"テストテキスト"
+print(str:len()) -- 7
+\end{lstlisting}
+のようになります．
+
+\LBibTeX 内での関数などが「文字列」を引数としたら返したりしている場合は，このようにして定義された文字列です．
+ただし，多くの関数などではLua組み込みの文字列でも動作します．
+
+\section{リファレンス}
+全ては\verb|LBibTeX|以下に定義されています．
+\subsection{lbt-core}\label{subsec:lbt-core}
+\LBibTeX のコアとなる部分が定義されています．
+\subsubsection{function LBibTeX.Citation.new()}
+文献情報を格納するためのテーブルを生成します．
+戻り値をcとすると，以下の意味を持ちます．
+ただし，この段階ではfields以外はnilです．
+\begin{itemize}
+\item c.key ：エントリーキー
+\item c.type ： エントリータイプ
+\item c.fields ： フィールド．\verb|c.fields["author"]|のようにフィールドキーからその値を得られる．\verb|c.fields[U"author"]|でも得られる．もしデータベースに該当フィールドが存在しない場合はnilとなる．
+\item c.label ： \verb|\bibitem|に渡されるオプション．デフォルトはnilであり，この場合オプションは出力されない．
+\item c.bbib ： もともとこの文献情報が格納されていたデータベースファイルを表す．
+\end{itemize}
+
+\subsubsection{function LBibTeX.LBibTeX.new(file)}
+.auxファイルを読み取り，その情報を格納したテーブルを返します．\verb|setmetatable(*,{__index = LBibTeX.LBibTeX})|されています．
+\begin{itemize}
+\item LBibTeX.LBibTeX.aux ： auxファイル名
+\item LBibTeX.LBibTeX.style ： スタイル名
+\item LBibTeX.LBibTeX.cites ： 引用されている文献一覧（この段階ではエントリーキーのみが設定されている）．
+\item LBibTeX.LBibTeX.bibs ： データベース名一覧
+\end{itemize}
+
+\subsubsection{function LBibTeX.LBibTeX.read\_database(file)}
+.bibデータベースからの読み込みを行います．文献一覧，preamble，stringsを返します．
+失敗した場合は，nilとエラー文字列を返します．
+\begin{itemize}
+\item 文献一覧はエントリーキーをインデックスとするテーブル．値はLBIbTeX.Ciation.new()で生成される．
+\item preambleは文字列．
+\item stringsはキーをインデックスとするテーブル．
+\end{itemize}
+この段階では，\verb|#|による文字列の結合などは行われません．
+LBibTeX.LBibTX.apply\_macro\_to\_str を用いることで，「正しい」結果を得ることができます．
+
+\subsubsection{function LBibTeX.LBibTeX:read()}
+LBibTeX.LBibTeX.newで指定された情報に基づき，データベースからの読み込みを行います．
+この段階で
+\begin{itemize}
+\item LBibTeX.LBibTeX.cites に引用されている文献一覧のデータが設定され
+\item LBibTeX.LBibTeX.macros にstringsの一覧が設定され
+\end{itemize}
+ます．
+read\_database と違い，\verb|#|による文字列の結合や，@stringで定義されたマクロの展開が行われます．
+マクロは@stringで定義されたもののほか，read時にLBibTeX.LBibTeX.macrosに保持されていたものも展開されます．
+また内部にデータベース全体を保持し，これ以降get\_db が利用可能になります．
+
+
+\subsubsection{function LBibTeX.LBibTeX:get\_db(key)}
+LBibTeX.LBibTeX:read()において読み込んだデータベースから文献情報を読み出します．
+
+\subsubsection{function LBibTeX.LBibTeX:set\_db(key,c)}
+文献情報をセットします．
+
+\subsubsection{function LBibTeX.LBibTeX:add\_to\_citations(key)}
+エントリーキーがkeyの物を，LBibTeX.LBibTeX.citesに追加します．
+
+\subsubsection{function LBibTeX.LBibTeX.apply\_macro\_to\_str(str,macros)}
+strにマクロ展開（macrosであたえる），文字列結合などの処理を行った結果を返します．
+
+\subsubsection{function LBibTeX.LBibTeX:output(s)}
+文字列sを.bblへ出力します．
+
+\subsubsection{function LBibTeX.LBibTeX:outputline(s)}
+.bblへの一行出力を行います．
+
+\subsubsection{function LBibTeX.LBibTeX:outputcites(formatter)}
+.bblに\verb|\bibitem|を出力します．
+formatterはタイプをインデックス，関数を値とするテーブルです．
+例えば
+\begin{lstlisting}
+formatter["article"] = function(c)
+	return c.fields["author"]
+end
+\end{lstlisting}
+と定義されていると，articleに対しては著者のみが出力されます．
+
+\subsubsection{function LBibTeX.LBibTeX:outputthebibliography(formatter)}
+大体
+\begin{lstlisting}
+outputline("\\begin{thebibliography}{" .. get_longest_label() .. "}")
+outputcites(formatter)
+outputline("\\end{thebibliography}")
+\end{lstlisting}
+と等価です．
+
+\subsubsection{function LBibTeX.LBibTeX:get\_longest\_label()}
+もっとも長いラベルを返します．ラベルが設定されていない場合は空文字列が帰ります．
+
+\subsubsection{function LBibTeX.LBibTeX:warning(s)}
+警告を出力します．
+
+\subsubsection{function LBibTeX.LBibTeX:error(s,exit\_code)}
+エラーをユーザに通知し，\LBibTeX をエラーコードexit\_code で終了します．
+
+\subsubsection{function LBibTeX.LBibTeX:dispose()}
+LBibTeX.LBibTeXを破棄します．
+
+\subsection{lbt-ustring}
+ICU4Luaの提供するデータ型を返します．lbt-ustring.ustring = icu.ustring，lbt-ustring.ufile = icu.ufile，lbt-ustring.collator = icu.collatorという関係です．
+LBibTeX.use\_icu = falseの状態で呼び出された場合，ICU4Luaは呼び出されず，代わりにLua組み込み文字列によるエミュレートが行われます．
+この場合は（組み込み文字列と同様）単なるバイト列として扱われます．
+
+\subsection{lbt-funcs}
+様々な関数が定義されています．
+\subsubsection{function LBibTeX.text\_prefix(str,num)}
+strの先頭num文字を取り出します．
+ただし，\verb|{}|で囲まれた部分は一文字として計算されます．
+\BibTeX のtext.prefix\$ に似ています．
+
+\subsubsection{function LBibTeX.change\_case(str,format)}
+大文字小文字の変換を行います．ただし，中括弧の中は処理されません．formatは\verb|"t"|，\verb|"u"|，\verb|"l"|のどれかで，
+\begin{itemize}
+\item \verb|"u"|，\verb|"l"|はそれぞれ大文字，小文字への変換を表す．
+\item \verb|"t"|は小文字への変換を行うが，一文字目及び\verb|": *"|で表される文字の次の文字は変換されません．
+\end{itemize}
+\BibTeX のchange.case\$に似ています．
+
+\subsubsection{function LBibTeX.split\_names(names[,seps])}
+複数名の名前からなる文字列から，各人の名前の入った配列を得ます．
+人と人との区切りを配列sepsで与えることができます．（配列中のいずれかにマッチした部分で区切られる．）
+sepsのデフォルトは\verb|{"[aA][nN][dD]"}|です．
+
+\subsubsection{function LBibTeX.get\_name\_parts(names)}
+名前からfirst name，last name，von part，jr partの四つの部分を抽出します．
+戻り値は
+\begin{lstlisting}
+{first = <first part>, last = <last part>, von = <von part>, jr = <jr part>}
+\end{lstlisting}
+で，各々の部分は
+\begin{lstlisting}
+{parts = <array of name>, seps = <separator of names>}
+\end{lstlisting}
+です．%\verb|<array of name>|は各部分の名前が配列で，\verb|<separator of names>|はnames内で使われていた区切り記号を表します．
+例えばvon-von Last Last, First, jrに対しては，次のように返ります．
+\begin{lstlisting}
+{
+	first = {parts = {"First"}, seps = {}},
+	last = {parts = {"Last","Last"}, seps = {" "}},
+	von = {parts = {"von", "von"}, seps = {"-"}},
+	jr = {pars = {"jr"}, seps = {}}
+}
+\end{lstlisting}
+
+この関数は，次のルールに基づき名前を分解します．
+\begin{enumerate}
+\item \verb|[ ,~\t%-]+|に該当するパターンで区切り，配列を生成する．
+\item 1で区切られた際に用いられた区切り文字のうち，最初の一文字がカンマ「,」のものの数を数える．この数に基づき，次の三つのパターンのどれかと見なす．
+\begin{enumerate}
+\item カンマがない：First von Lastのパターン．頭から見てvonと見なされるパターンの前までがFirst，後ろから見てvonと見なされるパターンの後ろまでがLast．vonがない場合は1で区切られたうちの最後の一つのみがLast．（ただし，区切り文字が\verb|"-"|のものはまとめて考える．例えば``First Last Last''のLastは``Last''であるが，``First Last-Last''ならば``Last-Last''である．）
+\item カンマが一つ：von Last, Firstのパターン．von LastからLastを抜き出す処理は(a)と同じ．
+\item カンマが二つ：von Last, Jr, Firstのパターン．von LastからLastを抜き出す処理は(a)と同じ．
+\end{enumerate}
+\item 2における「vonと見なされるパターン」とは，（基本的には）\footnote{実際には中括弧内や，コントロールシークエンスで定義されたアクセントなども考慮に入れる．}最初に現れたアルファベットが小文字であるもののことである．
+\end{enumerate}
+
+
+\subsubsection{function LBibTeX.forat\_name\_by\_parts(nameparts,format)}
+formatにて指定された書式に基づき，名前の整形を行います．
+namepartsはLBibTeX.get\_name\_parts で得られる戻り値と同じかたちで与えます．
+formatで与える書式は次の形です．
+\begin{quote}
+\begin{verbatim}
+<str1>{<before1><name1><after1>}<str2>{<before2><name2><after2>}...
+\end{verbatim}
+\end{quote}
+\begin{itemize}
+\item \verb|<str1>|はそのまま出力される．
+\item \verb|<name1>|はl，ll，f，ff，v，vv，j，jjの何れか．Last name，First name，von part，jr partに対応し，二つ続いているものは名前全体を，そうでないものは短縮形を表す．
+\item \verb|<before1>|はそのまま出力される．ただし\verb|<name1>|に対応する部分がない場合，出力されない．
+\item \verb|<after1>|は\verb|{<sep1>}<after1_>|か\verb|<after1_>|（中括弧なし）の何れかである．\verb|<sep1>|は\verb|<name1>|の各部分をつなぐ文字として使われ，\verb|<after1_>|は次の部分とのつなぐ文字として使われる．\verb|<sep1>|が省略された場合や，\verb|"~"|であった場合は，空白（\verb|" "|か\verb|"~"|）が状況に応じて使われる．もし常に\verb|"~~"|を出力したい場合は，\verb|"~~"|を指定する．
+\item \verb|<str2>|等も同様．
+\end{itemize}
+
+\subsubsection{function LBibTeX.format\_name(name,format)}
+\BibTeX のformat.names\$と似た関数です．
+中身は
+\begin{lstlisting}
+return LBibTeX.forat_name_by_parts(LBibTeX.get_name_parts(name),format)
+\end{lstlisting}
+です．
+
+\subsubsection{function LBibTeX.make\_name\_list(namearray, format, separray[, etalstr])}
+複数人の名前の配列から文字列を作ります．
+separrayの長さをk，namearrayの長さをnとすると，
+\begin{quote}
+\begin{verbatim}
+namearray[1]separray[1]namaearray[2]separray[2] .... 
+namearray[n - k + 1]separray[2] ...
+namearray[n - 1]separray[k]namearray[n]
+\end{verbatim}
+\end{quote}
+という文字列を生成します．（実際には改行無し．）
+ただし，namearrayの各項はformatに従い整形され（書式はLBibTeX.format\_name\_by\_partsと同様），またもしnamearray[n]が``others''の場合は，namearray[n]はetalstrに置き換えられます．
+デフォルトではetalstrは空文字列です．
+
+\subsubsection{function LBibTeX.remove\_TeX\_cs(s)}
+sから\TeX のコントロールシークエンスを取り除いた文字列を得ます．
+
+\subsubsection{function LBibTeX.citation\_check(citations,required)}
+citationsに与えられた文献情報一覧を，requiredに従いチェックします．
+例えば
+\begin{lstlisting}
+required["article" ] = {required = {"author", "title"}, optional = {"volume", "number"}}
+\end{lstlisting}
+であった場合，articleにおいては，author，titleフィールドは必須であり，volume，numberフィールドは任意であることを意味します．（任意フィールドは今のところ無視されています．）
+また
+\begin{lstlisting}
+required["book" ] = {required = {{"author","editor"}, "title"}}
+\end{lstlisting}
+のようになっていた場合，bookにおいてはauthor，editorの何れかとtitleが必須であることを意味します．
+
+citationsには文献情報からなるテーブルを与えます．
+戻り値は，例えば次のような形をしています．
+\begin{lstlisting}
+{key1 = {{"author","editor"}, "title"}, key2 = {"year"}}
+\end{lstlisting}
+key1には「authorまたはeditor」とtitleが，key2にはyearが欠落していることを示します．
+
+\subsubsection{function LBibTeX.LBibTeX:output\_citation\_check(citation\_check)}
+（これはLBibTeX以下に直接定義されているわけではなく，LBibTeX.LBibTeX以下であることに注意してください．）
+LBibTeX.citation\_check(citations,required)での出力を受けて警告を表示します．
+
+\subsection{lbt-crossref}
+Cross Referenceを処理します．
+
+\subsubsection{function LBibTeX.CrossReference.new()}
+Cross Referenceを処理するための新しいテーブルを作成します．
+\begin{itemize}
+\item LBibTeX.CrossReference.reference\_key\_name ： Cross Referenceを表すフィールドキーです．デフォルトはcrossref．
+\item LBibTeX.CrossReference.mincrossrefs ： この値以上にCross Referenceがされていたら文献一覧に加えます．デフォルトは1．
+\item LBibTeX.CrossReference.override ： 既にフィールドが値を持っていた場合，Cross Referenceのフィールドで上書きをするかを指定します．デフォルトはfalse．
+\end{itemize}
+
+\subsubsection{function LBibTeX.CrossReference:add\_inherit(source\_type,target\_type,source\_key,target\_key)}
+Cross Referenceされている場合に，その親から子に受け継がせるフィールドキーの対応を指定します．例えば
+\begin{verbatim}
+@article{"child",
+    author = "child author",
+    title = "child title",
+    crossref = "parent"
+}
+@book{"parent",
+    editor = "parent editor",
+    title = "parent title"
+}
+\end{verbatim}
+とある場合，通常parentのtitleはchildのtitleに割り当てあられますが，
+\begin{lstlisting}
+add_inherit("article","book","title","subtitle")
+\end{lstlisting}
+とあれば，parentのtitleはchildのsubtitleに割り当てられます．
+
+複数の設定を同時に行うこともできます．
+\begin{lstlisting}
+add_inherit({"article","inbook"},{"book","proceedings"},{"title","booktitle"},"subtitle")
+\end{lstlisting}
+は，タイプがarticleまたはinbookの親がタイプがbookかproceedingsの子にCross Referenceされている場合，titleとbooktitleフィールドをsubtitleに割り当てます．
+更に，
+\begin{lstlisting}
+add_inherit(
+	LBibTeX.CrossReference.all_type,
+	LBibTeX.CrossReference.all_type,
+	LBibTeX.CrossReference.all_type,
+	"subtitle")
+\end{lstlisting}
+とすると，全てのタイプからCross Referenceされている全てのタイプに対して，その全てのフィールドをsubtitleに割り当てることを意味します．
+なお，デフォルトでは同名のフィールドに割り当てます．
+
+\subsubsection{function LBibTeX.CrossReference:add\_except(source\_type,target\_type,source\_key,target\_key)}
+add\_inherit での指定に対する例外を指定します．指定方法はadd\_inherit と同様です．
+
+\subsubsection{function LBibTeX.CrossReference:modify\_citations(bibtex)}
+add\_inherit 等の指定に従い，文献一覧情報を変更します．
+bibtexにはLBibTeX.LBibTeX.newで生成したテーブルを渡します．
+
+\subsubsection{function LBibTeX.CrossReference:make\_formatter(orig\_formatter,crossref\_formatter)}
+Cross Reference用のフィールドが定義されていればcrossref\_formatter[type]を，そうでなければorig\_formatter[type]を呼び出す関数からなるテーブルを作成します．
+typeは文献のタイプです．
+なお，crossref\_formatter[type]がnilの時は常にorig\_formatter[type]を呼び出します．
+
+\subsection{lbt-template}
+文献一覧の整形を行う関数の生成を補助します．
+
+\subsubsection{function LBibTeX.Template.make(templs,funcs)}
+\begin{lstlisting}
+templs["article"] = "[$<author|editor>:<\\emph{|$<title>|}>]"
+\end{lstlisting}
+のようなtemplsから，文献一覧の整形を行う関数を生成します．（LBibTeX.LBibTeX:outputcitesに直接渡せるもの．）
+この文字列は次のような意味を持ちます．
+\begin{itemize}
+\item \verb|[A:B:...:X]|：「ブロック」を表します．最終的にはこれは\verb|A<sep>B<sep>....<sep>X<last>|となります．ただし，空文字列の時は省略されます．（\verb|[A:B:C]|でBが空ならば\verb|A<sep>C<last>|となる．）ブロックはネストが可能です．\verb|<sep>|や\verb|<last>|はそれぞれLBibTeX.Template.blockseparator[nestlevel]及びLBibTeX.Template.blocklast[nestlevel]で指定します．
+\verb|<sep>|は一時的に変更することも可能です．\verb|[A:B:@S<special sep>C:D]|は，\verb|A<sep>B<special sep>C<sep>D<last>|となります．ただし，Cが空文字列の場合は\verb|A<sep>B<sep>D<last>|となります．また，\verb|<sep>|や\verb|<last>|の処理によりピリオドが続いた場合，ピリオドを削除します．例えば\verb|[string A.]|で\verb|<last>|が\verb|"."|であった場合は，「string A..」ではなく，「string A.」となります．
+\item \verb:<A|B|C>:は，Bが空文字列ならば空文字列に，そうでなければABCになります．
+\item \verb:$<A|B|...>:
+は，まずfuncs.Aを呼び出し，その結果が空文字列ならばfuncs.Bを呼び出し……と続け，最初に空文字列でないものであった場合にその値になります．もしfuncs.Aがnilならば，これはAというフィールドを返す関数であると見なされます．
+\end{itemize}
+funcsは次のような関数からなるテーブルです．
+\begin{lstlisting}
+function funcs.title(c)
+	if c.fields["title"] == nil then return nil end
+	return LBibTeX.change_case(c.fields["title"],"t")
+end
+\end{lstlisting}
+引数cはLBibTeX.Citation.new()により得られたテーブルです．
+このようにnilまたは文字列を返すのが基本ですが，配列を返すこともできます．
+これはブロックを区切り付きで返していることに対応します．例えばtemplが
+\begin{lstlisting}
+"[$<name>]"
+\end{lstlisting}
+であり，
+\begin{lstlisting}
+function funcs.name(c)
+	return {c.fields["author"],c.fields["editor"]}
+end
+\end{lstlisting}
+と定義されている場合は，templが
+\begin{lstlisting}
+"[$<author>:$<editor>]"
+\end{lstlisting}
+と定義されているのと等価になります．
+
+\subsection{lbt-styles-**}
+**は現在stdとamsがあります．
+lbt-style-stdには，plain，alpha，abbrv，unsrtスタイルが共有する部分が定義されています．
+このように特殊なスタイルに対する定義ではありますが，一般のスタイルファイルを作成する際にも有用な処理がいくつかあります．
+実際，lbt-styles-amsは内部でlbt-style-stdを呼んでいます．
+以下lbt-style-stdの解説をしますが，lbt-styles-amsでも同様です．
+requireによる戻り値をlbt-style-stdとします．
+\subsubsection{lbt-style-std.macros}
+マクロが定義されたテーブルです．
+
+\subsubsection{function lbt-style-std.make\_label(c)}
+[Abe15]のようなラベルを生成します．
+基本的にはauthorフィールドまたはeditorフィールド（タイプがproceedingsの時）から，著者名の頭3文字（単著の場合）または著者名のvon Last（省略形）をつなげ，年の最後二文字をつけたものを生成します．ただし，
+\begin{itemize}
+\item book，inbookでauthorがない場合は代わりにeditorフィールドを使います．
+\item authorやeditorがない場合は，keyフィールドを使います．
+\item proceedingsやmanualの場合，更にkeyがなければorganizationフィールドを使います．
+\end{itemize}
+
+\subsubsection{function lbt-style-std.sort(cites[,array[,formatter[,equals[,lessthan]]]])}
+citesにソートを行い，結果を返します．
+なお，この関数はcites[index].sort\_keyを汚します．
+\begin{itemize}
+\item array ： 比較する対象を配列で指定します．デフォルトは{"label","name","year","title","entry\_key"}です．これはまずformatter.labelの結果を比較し，それが同じならばformatter.nameの結果を比較し……とすることを意味します．
+\item formatter ： 比較する文字列を生成します．デフォルトは
+\begin{itemize}
+\item formatter.name(c)は，名前を\verb|{vv{ } }{ll{ }}{  ff{ }}{  jj{ }}|に基づいて整形したものを並べたのものを返す．ただし名前とはauthorまたはeditor（proceedingsの場合）であり，またbook，inbookにおいてauthorが定義されていないならばeditorを選ぶ．またproceedingsやmanualの場合にauthorやeditorが定義されていないならばorganizationを使う．
+\item formatter.title(c)は，頭の「The 」「A 」「An 」を取り除いたものを返す．
+\item formatter.label(c)は，c.labelを返す．
+\item formatter.entry\_key(c)は，c.keyを返す．
+\end{itemize}
+なお，formatterが定義されていない場合（デフォルトでは例えばformatter.year）は，その名前のフィールドを返すものと見なされます．
+またformatterが定義されている場合は，sort\_key 以下にformatterを施した結果を保持します．（高速化のため．）
+\item equals ： 文字列が等しいかを判定する関数．デフォルトはicu.collator.equals（localeはUS）．
+\item lessthan ： 文字列が小さいかを判定する関数．デフォルトはicu.collator.lessthan（localeはUS）．
+\end{itemize}
+
+\subsubsection{lbt-style-std.blockseparator}
+LBibTeX.Template.blockseparatorに設定するための配列です．
+
+\subsubsection{lbt-style-std.blocklast}
+LBibTeX.Template.blocklastに設定するための配列です．
+
+\subsubsection{lbt-style-std.Templates}
+LBibTeX.Template.makeの第一引数に渡すためのテーブルです．
+
+\subsubsection{lbt-style-std.Formatter}
+LBibTeX.Template.makeの第二引数に渡すためのテーブルです．
+
+\subsubsection{lbt-style-std.CrossReference}
+Cross Referenceを処理するためのテーブルです．
+LBibTeX.CrossReference.new()で生成されています．
+
+\subsubsection{lbt-style-std.CrossReference.Templates}
+LBibTeX.Template.makeの第一引数に渡すためのテーブルです．
+その結果はlbt-style-std.CrossReference:modify\_citationsの第二引数に使います．
+
+\end{document}
+
+

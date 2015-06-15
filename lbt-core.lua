@@ -52,6 +52,20 @@ local function includeskey(table,key)
 	return false
 end
 
+function LBibTeX.LBibTeX:get_db(key)
+	if self.db[key] == nil then return nil end
+	self:apply_macro(key)
+	return self.db[key]
+end
+
+function LBibTeX.LBibTeX:set_db(key,c)
+	c.macro_applied = true
+	if c.key == nil or c.type == nil then return false end
+	db[key] = c
+	return true
+end
+
+
 
 function LBibTeX.LBibTeX.new(file)
 	local citation = {}
@@ -119,6 +133,7 @@ function LBibTeX.LBibTeX.new(file)
 	obj.preamble = emptystr
 	obj.macros = {}
 	obj.db = {}
+	obj.macros_from_db = {}
 	obj.warning_count = 0
 	obj.converter = {}
 	obj.bbl = icu.ufile.open(U.encode(bbl),"w")
@@ -183,13 +198,21 @@ function LBibTeX.LBibTeX.apply_macro_to_str(str,macros)
 	local r = emptystr
 	for i = 1,#a do
 		a[i] = trim(a[i])
-		local s = macros[a[i]:lower()]
-		if s == nil then s = macros[U.encode(a[i]:lower())] end
-		if s ~= nil then
-			if type(s) == "string" then
-				s = U(s)
-				macros[a[i]:lower()] = s
+		local s
+		for j = 1,#macros do
+			s = macros[j][a[i]:lower()]
+			if s == nil then
+				s = macros[j][U.encode(a[i]:lower())]
+				macros[j][a[i]:lower()] = s
 			end
+			if s ~= nil then
+				if type(s) == "string" then 
+					s = U(s)
+					macros[j][a[i]:lower()] = s
+				end
+			end
+		end
+		if s ~= nil then
 			r = r .. s
 		else
 			r = r .. del_dquote_bracket(a[i])
@@ -207,8 +230,10 @@ function LBibTeX.LBibTeX:apply_macro(key)
 			converter = self.converter[U.encode(k)]
 			self.converter[k] = converter
 		end
-		if converter == nil then c.fields[k] = LBibTeX.LBibTeX.apply_macro_to_str(v,self.macros)
-		else c.fields[k] = converter(LBibTeX.LBibTeX.apply_macro_to_str(v,self.macros)) end
+		local macros = {self.macros}
+		if v.bib ~= nil and self.macros_from_db[v.bib] ~= nil then table.insert(macros,self.macros_from_db[v.bib]) end
+		if converter == nil then c.fields[k] = LBibTeX.LBibTeX.apply_macro_to_str(v,macros)
+		else c.fields[k] = converter(LBibTeX.LBibTeX.apply_macro_to_str(v,macros)) end
 	end
 	c.macro_applied = true
 	self.db[key] = c
@@ -226,19 +251,6 @@ function LBibTeX.LBibTeX:add_to_citations(key,nocheckexist)
 	return true
 end
 
-function LBibTeX.LBibTeX:get_db(key)
-	if self.db[key] == nil then return nil end
-	self:apply_macro(key)
-	return self.db[key]
-end
-
-function LBibTeX.LBibTeX:set_db(key,c)
-	c.macro_applied = true
-	if c.key == nil or c.type == nil then return false end
-	db[key] = c
-	return true
-end
-
 function LBibTeX.LBibTeX:read()
 	-- load databse
 	local c,p,m
@@ -250,10 +262,8 @@ function LBibTeX.LBibTeX:read()
 			self:error(p)
 		end
 		self.preamble = self.preamble .. p
-
-		for k,v in pairs(m) do
-			self.macros[k] = v
-		end
+		
+		self.macros_from_db[self.bibs[i]] = m
 		for k,v in pairs(c) do
 			self.db[k] = v
 		end
@@ -560,6 +570,7 @@ function LBibTeX.LBibTeX.read_database(file)
 				until s ~= comma
 				c.type = type
 				c.key = key
+				c.bib = file
 				db[key] = c
 			end
 		end

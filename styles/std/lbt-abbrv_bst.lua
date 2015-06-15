@@ -40,7 +40,7 @@ BibTeX.macros[U"tcs"] = U"Theoretical Comput. Sci."
 
 BibTeX:read()
 std_styles.CrossReference:modify_citations(BibTeX)
-BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
+BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
 LBibTeX.Template.blockseparator = std_styles.blockseparator
 LBibTeX.Template.blocklast = std_styles.blocklast

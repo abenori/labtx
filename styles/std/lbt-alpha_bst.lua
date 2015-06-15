@@ -10,7 +10,7 @@ end
 
 BibTeX:read()
 std_styles.CrossReference:modify_citations(BibTeX)
-BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
+BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
 -- label
 for i = 1,#BibTeX.cites do

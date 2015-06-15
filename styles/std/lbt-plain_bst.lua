@@ -1,4 +1,3 @@
-require "lbt-funcs"
 require "lbt-template"
 std_styles = require "lbt-style-std"
 local icu = require "lbt-string"
@@ -10,7 +9,7 @@ end
 
 BibTeX:read()
 std_styles.CrossReference:modify_citations(BibTeX)
-BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
+BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
 -- sort
 BibTeX.cites = std_styles.sort(BibTeX.cites)

@@ -2,7 +2,7 @@ local use_icu = true
 if LBibTeX ~= nil and LBibTeX.use_icu ~= nil then use_icu = LBibTeX.use_icu end
 
 if use_icu then
-	local icu = {}
+	icu = {}
 	icu.ustring = require "icu.ustring"
 	icu.ufile = require "icu.ufile"
 	icu.collator = require "icu.collator"

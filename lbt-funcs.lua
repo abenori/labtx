@@ -399,12 +399,12 @@ function LBibTeX.change_case(s,t)
 			local r = U""
 			local p = 0
 			while true do
-				local p1 = s:find(U": *.",p)
+				local p1,p2 = s:find(U": *.",p)
 				if p1 == nil then
 					return r .. s:sub(p):lower()
 				else
-					r = r .. s:sub(p,p1 - 1):lower() .. s:sub(p1,p1 + 2)
-					p = p1 + 3
+					r = r .. s:sub(p,p1 - 1):lower() .. s:sub(p1,p2)
+					p = p2 + 1
 				end
 			end
 		end
@@ -479,7 +479,7 @@ default_required["conference"] = default_required["incollection"]
 
 -- required[type] = {required = {...},optional = {...}}
 -- optional is ignored (at this point)
-function LBibTeX.LBibTeX.citation_check(citations,required)
+function LBibTeX.citation_check(citations,required)
 	if required == nil then required = default_required end
 	r = {}
 	for dummy,v in pairs(citations) do
