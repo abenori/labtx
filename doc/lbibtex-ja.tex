@@ -597,7 +597,7 @@ requireによる戻り値をlbt-style-stdとします．
 citesにソートを行い，結果を返します．
 なお，この関数はcites[index].sort\_keyを汚します．
 \begin{itemize}
-\item array ： 比較する対象を配列で指定します．デフォルトは{"label","name","year","title","entry\_key"}です．これはまずformatter.labelの結果を比較し，それが同じならばformatter.nameの結果を比較し……とすることを意味します．
+\item array ： 比較する対象を配列で指定します．デフォルトは\verb|{"label","name","year","title","entry_key"}|です．これはまずformatter.labelの結果を比較し，それが同じならばformatter.nameの結果を比較し……とすることを意味します．
 \item formatter ： 比較する文字列を生成します．デフォルトは
 \begin{itemize}
 \item formatter.name(c)は，名前を\verb|{vv{ } }{ll{ }}{  ff{ }}{  jj{ }}|に基づいて整形したものを並べたのものを返す．ただし名前とはauthorまたはeditor（proceedingsの場合）であり，またbook，inbookにおいてauthorが定義されていないならばeditorを選ぶ．またproceedingsやmanualの場合にauthorやeditorが定義されていないならばorganizationを使う．

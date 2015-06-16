@@ -210,6 +210,7 @@ function LBibTeX.LBibTeX.apply_macro_to_str(str,macros)
 					s = U(s)
 					macros[j][a[i]:lower()] = s
 				end
+				break
 			end
 		end
 		if s ~= nil then
@@ -231,7 +232,7 @@ function LBibTeX.LBibTeX:apply_macro(key)
 			self.converter[k] = converter
 		end
 		local macros = {self.macros}
-		if v.bib ~= nil and self.macros_from_db[v.bib] ~= nil then table.insert(macros,self.macros_from_db[v.bib]) end
+		if c.bib ~= nil and self.macros_from_db[c.bib] ~= nil then table.insert(macros,self.macros_from_db[c.bib]) end
 		if converter == nil then c.fields[k] = LBibTeX.LBibTeX.apply_macro_to_str(v,macros)
 		else c.fields[k] = converter(LBibTeX.LBibTeX.apply_macro_to_str(v,macros)) end
 	end
