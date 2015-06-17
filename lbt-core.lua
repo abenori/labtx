@@ -223,6 +223,7 @@ function LBibTeX.LBibTeX.apply_macro_to_str(str,macros)
 end
 
 function LBibTeX.LBibTeX:apply_macro(key)
+	if self.db[key] == nil then return end
 	if self.db[key].macro_applied == true then return end
 	local c = self.db[key]
 	for k,v in pairs(c.fields) do
@@ -277,10 +278,20 @@ function LBibTeX.LBibTeX:read()
 			self:add_to_citations(k,true)
 		end
 	else
-		for i = 1,#self.cites do
+		local n = #self.cites
+		local i = 1
+		while i <= n do
 			local k = self.cites[i].key
-			self:apply_macro(k)
-			self.cites[i] = self.db[k]
+			if self.db[k] == nil then
+				self:warning(U"I don't find a database entry for \"" .. k .. U"\"")
+				table.remove(self.cites,i)
+				i = i - 1
+				n = n - 1
+			else
+				self:apply_macro(k)
+				self.cites[i] = self.db[k]
+			end
+			i = i + 1
 		end
 	end
 end
