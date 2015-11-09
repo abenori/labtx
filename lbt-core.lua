@@ -1,28 +1,77 @@
 local icu = require "lbt-string"
 local U = icu.ustring
 
-LBibTeX = {}
-local emptystr = U""
+if LBibTeX == nil then LBibTeX = {} end
 
--- 個々の引用を表す
--- Citation.key, Citation.type, Citation.fields[], Citation.label
-LBibTeX.Citation = {}
-local function get_fields(table, key)
-	local x = rawget(table,key)
-	if x == nil and type(key) == "string" then x = rawget(table,U(key)) end
-	return x
-end
-
-function LBibTeX.Citation.new()
-	local obj = {fields = {},macro_applied = false}
-	setmetatable(obj.fields,{__index = get_fields})
-	return setmetatable(obj,{__index = Citation})
-end
-
+require "lbt-database"
 
 -- bblを表す構造
 -- LBibTeX.LBibTeX.aux, LBibTeX.LBibTeX.style, LBibTeX.LBibTeX.cites, LBibTeX.LBibTeX.bibs, LBibTeX.LBibTeX.bbl (stream)
+
 LBibTeX.LBibTeX = {}
+setmetatable(LBibTeX.LBibTeX,{__index = LBibTeX.Database})
+
+function LBibTeX.LBibTeX.new()
+	local obj = LBibTeX.Database.new()
+	obj.style = ""
+	obj.aux = ""
+	obj.cites = {}
+	obj.bibs = {}
+	obj.bbl = nil
+	obj.blg = nil
+	return setmetatable(obj,{__index = LBibTeX.LBibTeX})
+end
+
+function LBibTeX.LBibTeX:load_aux(file)
+	local aux = LBibTeX.LBibTeX.read_aux(file)
+	self.style = aux.style
+	self.aux = aux.aux
+	self.cites = aux.cites
+	self.bibs = aux.bibs
+	self.bbl = icu.ufile.open(U.encode(aux.bbl),"w")
+	self.blg = icu.ufile.open(U.encode(aux.blg),"w")
+	self.warning_count = 0
+	for i = 1,#self.bibs do
+		local bibfile = kpse.find_file(self.bibs[i],"bib")
+		if bibfile == nil or self:read(bibfile) == false then
+			self:dispose()
+			return false,"Cannot find Database file " .. self.bibs[i]
+		else
+			self:message(U"Database file #" .. U(tostring(i)) .. U": " .. self.bibs[i])
+		end
+	end
+	if self.cites == nil then
+		-- \cite{*}
+		self.cites = {}
+		for k,v in pairs(self.db) do
+			self.cites[#self.cites + 1] = v
+		end
+	else
+		local n = #self.cites
+		local i = 1
+		while i <= n do
+			local k = self.cites[i].key
+			if self.db[k] == nil then
+				self:warning(U"I don't find a database entry for \"" .. k .. U"\"")
+				table.remove(self.cites,i)
+				i = i - 1
+				n = n - 1
+			else
+				self.cites[i] = self.db[k]
+			end
+			i = i + 1
+		end
+	end
+	return true
+end
+
+local function includeskey(table,key)
+	for i = 1, #table do
+		if key == table[i].key then return true end
+	end
+	return false
+end
+
 local function getargument(str)
 	local start = str:find(U"{")
 	if start == nil then return nil end
@@ -45,29 +94,8 @@ local function getargument(str)
 	end
 end
 
-local function includeskey(table,key)
-	for i = 1, #table do
-		if key == table[i].key then return true end
-	end
-	return false
-end
-
-function LBibTeX.LBibTeX:get_db(key)
-	if self.db[key] == nil then return nil end
-	self:apply_macro(key)
-	return self.db[key]
-end
-
-function LBibTeX.LBibTeX:set_db(key,c)
-	c.macro_applied = true
-	if c.key == nil or c.type == nil then return false end
-	db[key] = c
-	return true
-end
-
-
-
-function LBibTeX.LBibTeX.new(file)
+-- style/aux/cites/bibs/bbl/blg
+function LBibTeX.LBibTeX.read_aux(file)
 	local citation = {}
 	local database = {}
 	local bbl = {}
@@ -130,15 +158,9 @@ function LBibTeX.LBibTeX.new(file)
 	if citeall then obj.cites = nil
 	else obj.cites = citation end
 	obj.bibs = database
-	obj.preamble = emptystr
-	obj.macros = {}
-	obj.db = {}
-	obj.macros_from_db = {}
-	obj.warning_count = 0
-	obj.converter = {}
-	obj.bbl = icu.ufile.open(U.encode(bbl),"w")
-	obj.blg = icu.ufile.open(U.encode(blg),"w")
-	return setmetatable(obj,{__index = LBibTeX.LBibTeX})
+	obj.bbl = bbl
+	obj.blg = blg
+	return obj;
 end
 
 local function table_connect(a,b)
@@ -146,154 +168,6 @@ local function table_connect(a,b)
 		table.insert(a,b[i])
 	end
 	return a
-end
-
-local function split_strings_nonestsep(str,sep)
-	local a = {}
-	local nest = 0
-	local inquote = false
-	local p = 1
-	local startstr = 1
-	while true do
-		local p1 = str:find(U"[{}\"]",p)
-		local p2
-		if nest == 0 and not inquote then
-			p2 = str:find(sep,p)
-		end
-		if p1 == nil and p2 == nil then
-			table.insert(a,str:sub(startstr))
-			return a
-		elseif p2 ~= nil and (p1 == nil or p2 < p1) then
-			table.insert(a,str:sub(startstr,p2 - 1))
-			startstr = p2 + 1
-			p = p2 + 1
-		else
-			k = str:sub(p1,p1)
-			if nest == 0 and k == U"\"" then inquote = not inquote
-			elseif not inquote and k == U"{" then nest = nest + 1
-			elseif not inquote and k == U"}" then nest = nest - 1
-			end
-			p = p1 + 1
-		end
-	end
-	return a
-end
-
-local trim_str1 = U"^[ \n\t]*"
-local trim_str2 = U"[ \n\t]*$"
-local function trim(str)
---	return str:gsub(U"^[ \n\t]*(.-)[ \n\t]*$",U"%1")
-	return str:gsub(trim_str1,emptystr):gsub(trim_str2,emptystr)
-end
-
-local start_bracket_dquote = U"^[\"{}]"
-local end_bracket_dquote = U"[\"{}]$"
-local function del_dquote_bracket(str)
-	return str:gsub(start_bracket_dquote,emptystr):gsub(end_bracket_dquote,emptystr)
-end
-
-function LBibTeX.LBibTeX.apply_macro_to_str(str,macros)
-	if type(str) == "string" then str = U(str) end
-	local a = split_strings_nonestsep(str,U"#")
-	local r = emptystr
-	for i = 1,#a do
-		a[i] = trim(a[i])
-		local s
-		for j = 1,#macros do
-			s = macros[j][a[i]:lower()]
-			if s == nil then
-				s = macros[j][U.encode(a[i]:lower())]
-				macros[j][a[i]:lower()] = s
-			end
-			if s ~= nil then
-				if type(s) == "string" then 
-					s = U(s)
-					macros[j][a[i]:lower()] = s
-				end
-				break
-			end
-		end
-		if s ~= nil then
-			r = r .. s
-		else
-			r = r .. del_dquote_bracket(a[i])
-		end
-	end
-	return trim(r)
-end
-
-function LBibTeX.LBibTeX:apply_macro(key)
-	if self.db[key] == nil then return end
-	if self.db[key].macro_applied == true then return end
-	local c = self.db[key]
-	for k,v in pairs(c.fields) do
-		local converter = self.converter[k]
-		if converter == nil then
-			converter = self.converter[U.encode(k)]
-			self.converter[k] = converter
-		end
-		local macros = {self.macros}
-		if c.bib ~= nil and self.macros_from_db[c.bib] ~= nil then table.insert(macros,self.macros_from_db[c.bib]) end
-		if converter == nil then c.fields[k] = LBibTeX.LBibTeX.apply_macro_to_str(v,macros)
-		else c.fields[k] = converter(LBibTeX.LBibTeX.apply_macro_to_str(v,macros)) end
-	end
-	c.macro_applied = true
-	self.db[key] = c
-end
-
-function LBibTeX.LBibTeX:add_to_citations(key,nocheckexist)
-	if type(key) == "string" then key = U(key) end
-	if nocheckexist ~= true then
-		for i = 1,#self.cites do
-			if self.cites[i].key == key:lower() then return false end
-		end
-	end
-	self:apply_macro(key)
-	table.insert(self.cites,self.db[key])
-	return true
-end
-
-function LBibTeX.LBibTeX:read()
-	-- load databse
-	local c,p,m
-	preambles = {}
-	for i = 1,#self.bibs do
-		c,p,m = LBibTeX.LBibTeX.read_database(self.bibs[i])
-		if c == nil then 
-			self:message(U"error in " .. self.bibs[i])
-			self:error(p)
-		end
-		self.preamble = self.preamble .. p
-		
-		self.macros_from_db[self.bibs[i]] = m
-		for k,v in pairs(c) do
-			self.db[k] = v
-		end
-	end
-	
-	if self.cites == nil then
-		-- \cite{*}
-		self.cites = {}
-		for k,v in pairs(self.db) do
-			self:add_to_citations(k,true)
-		end
-	else
-		local n = #self.cites
-		local i = 1
-		while i <= n do
-			local k = self.cites[i].key
-			if self.db[k] == nil then
-				self:warning(U"I don't find a database entry for \"" .. k .. U"\"")
-				table.remove(self.cites,i)
-				i = i - 1
-				n = n - 1
-			else
-				self:apply_macro(k)
-				self.cites[i] = self.db[k]
-			end
-			i = i + 1
-		end
-	end
 end
 
 function LBibTeX.LBibTeX:dispose()
@@ -329,6 +203,15 @@ function LBibTeX.LBibTeX:outputline(s)
 	if type(s) == "string" then s = U(s) end
 	self.bbl:write(s .. U"\n")
 end
+
+local emptystr = U""
+local trim_str1 = U"^[ \n\t]*"
+local trim_str2 = U"[ \n\t]*$"
+local function trim(str)
+--	return str:gsub(U"^[ \n\t]*(.-)[ \n\t]*$",U"%1")
+	return str:gsub(trim_str1,emptystr):gsub(trim_str2,emptystr)
+end
+
 
 function LBibTeX.LBibTeX:outputcites(formatter)
 	for i = 1, #self.cites do
@@ -381,208 +264,6 @@ local function getkeyval(str)
 	local key = trim(str:sub(1,eq-1))
 	local val = trim(str:sub(eq+1))
 	return key,val
-end
-
-local buffer = {}
-function buffer.new(file,enc)
-	if enc == nil then enc = "UTF-8" end
-	local f,m = icu.ufile.open(U.encode(file),"r",enc)
-	if f == nil then return nil end
-	obj = {fp = f,linenum = 0}
-	return setmetatable(obj,{__index = buffer})
-end
-
-function buffer:read()
-	self.linenum = self.linenum + 1
-	return self.fp:read()
-end
-
-function buffer:close()
-	return self.fp:close()
-end
-
-local yenstar_bracket_dquote_paren_comma = U"\\*[{}\"),]"
-local yenstar_bracket_dquote_comma = U"\\*[{}\",]"
-local comma = U","
-local closebra = U"}"
-local openbra = U"{"
-local dquote = U"\""
-local closeparen = U")"
-
--- 次のunnestedな,か)}まで得る
--- return (得たもの),(最後の区切り（カンマまたはendbra））,lineの残り
-local function get_entry(line,buf,endbra)
-	local ptn
-	if endbra == closeparen then ptn = yenstar_bracket_dquote_paren_comma
-	else ptn = yenstar_bracket_dquote_comma end
-	local rv = emptystr
-	local startline = buf.linenum
-	local nest = 0
-	local inquote = false
-	repeat
-		local r = 1
-		while true do
-			local q = r
-			while true do
-				local p1,p2 = line:find(ptn,q)
-				if p1 == nil then
-					q = nil
-					break
-				elseif (p2 - p1) % 2 == 1 then
-					q = p2 + 1
-				else
-					q = p2
-					break
-				end
-			end
-			if q == nil then
-				rv = rv .. line:sub(r)
-				break
-			else
-				local k = line:sub(q,q)
---				print("[" .. line .. "], nest = " .. tostring(nest) .. ", inquote = " .. tostring(inquote) .. ", k = (" ..  k .. ")" .. ", endbra = " .. endbra)
-				if (k == endbra or k == comma) and nest == 0 and (not inquote) then
-					rv = rv .. line:sub(r,q - 1)
-					line = line:sub(q + 1)
-					return rv,k,line
-				elseif k == openbra then nest = nest + 1
-				elseif k == closebra then nest = nest - 1
-				elseif k == dquote then inquote = not inquote
-				end
-				rv = rv .. line:sub(r,q)
-				r = q + 1
-			end
-		end
-		line = buf:read()
-	until line == nil
-	return nil,U"cannot find fields started from line: " .. U(tostring(startline))
-end
-
-local yenstar_bracket_parent = U"\\*[{})]"
-local yenstar_bracket = U"\\*[{}]"
-
-local function get_preamble(line,buf,endbra)
-	local ptn
-	if endbra == closeparen then ptn = yenstar_bracket_parent
-	else ptn = yenstar_bracket end
-	local rv = emptystr
-	local startline = buf.linenum
-	local nest = 0
-	repeat
-		local r = 1
-		while true do
-			local q = r
-			while true do
-				local p1,p2 = line:find(ptn,q)
-				if p1 == nil then
-					q = nil
-					break
-				elseif (p2 - p1) % 2 == 1 then
-					q = p2 + 1
-				else
-					q = p2
-					break
-				end
-			end
-			if q == nil then
-				rv = rv .. line
-				break
-			end
-			k = line:sub(q,q)
-			if k == endbra and nest == 0 then
-				rv = rv .. line:sub(1,q - 1)
-				line = line:sub(q + 1)
-				return rv,line
-			elseif k == openbra then nest = nest + 1
-			elseif k == closebra then nest = nest - 1
-			end
-			r = q + 1
-		end
-		line = buf:read()
-	until line == nil
-end
-
-local open_bra_paren = U"[{(]"
-local preamble_str = U"preamble"
-local comment_str = U"comment"
-local string_str = U"string"
-local atmark = U"@"
-
--- return db,preamble,macros
-function LBibTeX.LBibTeX.read_database(file)
-	if type(file) == "string" then file = U(file) end
-	buf = buffer.new(file)
-	if buf == nil then return nil,nil,nil end
-	local preamble = emptystr
-	local macros = {}
-	local db = {}
-	line = buf:read()
-	while line ~= nil do
-		local r = nil
-		while line ~= nil do
-			r = line:find(atmark)
-			if r ~= nil then break
-			else line = buf:read()
-			end
-		end
-		if line == nil then break end
-		line = line:sub(r + 1)
-		-- 区切り文字を探す．
-		local type = nil
-		local endbra
-		local startline = buf.linenum
-		r = 1
-		while true do
-			local r = line:find(open_bra_paren,r)
-			if r ~= nil then
-				local k = line:sub(r,r)
-				type = trim(line:sub(1,r - 1)):lower()
-				if k == openbra then endbra = closebra
-				else endbra = closeparen end
-				line = line:sub(r + 1)
-				break
-			end
-			line = buf:read()
-			if line == nil then return nil end
-		end
-
-		if type == preamble_str then
-			local pre,line = get_preamble(line,buf,endbra)
-			if pre == nil then return nil,U"searching preamble.. " .. line end
-			preamble = preamble .. LBibTeX.LBibTeX.apply_macro_to_str(pre,{})
-		elseif type == comment_str then
-			local pre,line = get_preamble(line,buf,endbra)
-			if pre == nil then return nil,U"searching comment.. " .. line end
-		else
-			local field,s,line = get_entry(line,buf,endbra)
-			if field == nil then break end
-			local key = trim(field)
-			if type == string_str then
-				local k,v = getkeyval(field)
-				if k ~= emptystr then macros[k:lower()] = del_dquote_bracket(v) end
-				while s == comma do
-					field,s,line = get_entry(line,buf,endbra)
-					if field == nil then return nil,U"searching entry.. " .. s end
-					k,v = getkeyval(field)
-					if k ~= emptystr then macros[k:lower()] = del_dquote_bracket(v) end
-				end
-			else
-				c = LBibTeX.Citation.new()
-				local s,field
-				repeat
-					field,s,line = get_entry(line,buf,endbra)
-					if field == nil then return nil,U"searching entry.. " .. s end
-					local k,v = getkeyval(field)
-					if k ~= emptystr then c.fields[k:lower()] = v end
-				until s ~= comma
-				c.type = type
-				c.key = key
-				c.bib = file
-				db[key] = c
-			end
-		end
-	end
-	return db,preamble,macros
 end
 
 function LBibTeX.LBibTeX:warning(s)

@@ -118,10 +118,8 @@ for v,k in pairs(std_styles.macros) do
 	BibTeX.macros[v] = k
 end
 
--- データベース読み込み
-BibTeX:read()
 -- cross referenceされているエントリーを追加
-std_styles.CrossReference:modify_citations(BibTeX)
+BibTeX.cites = std_styles.CrossReference:modify_citations(BibTeX.cites,BibTeX)
 -- 引用されている文献データをチェックし，必要ならばwarningを出す．
 BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
 
@@ -248,64 +246,60 @@ print(str:len()) -- 7
 
 \section{リファレンス}
 全ては\verb|LBibTeX|以下に定義されています．
-\subsection{lbt-core}\label{subsec:lbt-core}
-\LBibTeX のコアとなる部分が定義されています．
+\begin{itemize}
+\item テーブルCLASSにCLASS.newという関数がある場合，最後に\verb|setmetatable(obj,{__index = CLASS})|して返されます．
+\item テーブルAがテーブルBを継承しているとは，\verb|setmetatable(CLASSA,{__index = CLASSB}|がされていることです．
+\end{itemize}
+
+\subsection{lbt-database}\label{subsec:lbt-database}
+データベースを読み込みます．
+各フィールドにはマクロが適用されます．
+ここでマクロの適用とは，@stringで定義された文字列の置換と，\verb|#|による文字列の結合を表します．
 \subsubsection{function LBibTeX.Citation.new()}
 文献情報を格納するためのテーブルを生成します．
 戻り値をcとすると，以下の意味を持ちます．
-ただし，この段階ではfields以外はnilです．
+直接呼び出されることはあまりないと思います．
 \begin{itemize}
 \item c.key ：エントリーキー
 \item c.type ： エントリータイプ
 \item c.fields ： フィールド．\verb|c.fields["author"]|のようにフィールドキーからその値を得られる．\verb|c.fields[U"author"]|でも得られる．もしデータベースに該当フィールドが存在しない場合はnilとなる．
 \item c.label ： \verb|\bibitem|に渡されるオプション．デフォルトはnilであり，この場合オプションは出力されない．
-\item c.bbib ： もともとこの文献情報が格納されていたデータベースファイルを表す．
+\item c.bib ： もともとこの文献情報が格納されていたデータベースファイルを表す．
 \end{itemize}
 
-\subsubsection{function LBibTeX.LBibTeX.new(file)}
-.auxファイルを読み取り，その情報を格納したテーブルを返します．\verb|setmetatable(*,{__index = LBibTeX.LBibTeX})|されています．
+\subsubsection{function LBibTeX.Database.new()}
+文献読み込みのためのテーブルを生成します．
 \begin{itemize}
-\item LBibTeX.LBibTeX.aux ： auxファイル名
-\item LBibTeX.LBibTeX.style ： スタイル名
-\item LBibTeX.LBibTeX.cites ： 引用されている文献一覧（この段階ではエントリーキーのみが設定されている）．
-\item LBibTeX.LBibTeX.bibs ： データベース名一覧
+\item db：データベース一覧です．エントリーキーがkeyのデータがdb[key]に入っています．db[key]の値はLBibTeX.Ciation.newで生成されたものです．db[key].fieldsから得られるフィールドは，データベース生の値ではなくてそれにマクロが施された形になっています．dbに追加をする場合は，次のadd\_dbを使ってください．
+\item preamble：データベース内で定義されたプレアンブル（を全て結合したもの）です．
+\item macros：マクロ一覧を表します．データベースから読み込まれたものはここには入りません．\verb|macros["jan"] = "January"|とするとjanがJanuaryになります．
+\item converter：フィールドを取得すると通常はマクロが適用されたものが出てきますが，たとえば\verb|converter["title"] = function(db,data) return "[" .. data.fields["title"] .. "]" end|と定義しておくと，titleに関しては生のtitleフィールドを[]で囲ったものになります．
 \end{itemize}
 
-\subsubsection{function LBibTeX.LBibTeX.read\_database(file)}
-.bibデータベースからの読み込みを行います．文献一覧，preamble，stringsを返します．
-失敗した場合は，nilとエラー文字列を返します．
+\subsubsection{function LBibTeX.Database:read(file)}
+fileからデータベースを読み込みます．
+
+\subsubsection{function LBibTeX.Database:add\_db(cite)}
+citeはLBibTeX.Citations.new()で生成したテーブルを渡します．データベースに新しいデータを追加します．
+
+\subsubsection{function LBibTeX.Database:apply\_macro(data,key)}
+data.fields[key]にマクロを施した結果を得ます．
+
+\subsection{lbt-core}\label{subsec:lbt-core}
+\LBibTeX のコアとなる部分が定義されています．
+テーブルLBibTeX.LBibTeXはLBibTeX.Databaseを継承しています．
+
+\subsubsection{function LBibTeX.LBibTeX.new()}
+\LBibTeX の状態そのものを表すテーブルを生成します．
+
+\subsubsection{function LBibTeX.LBibTeX:load\_aux(file)}
+.auxファイルを読み取り，その情報を格納したテーブルを返します．データベースの読み込みも行います．
 \begin{itemize}
-\item 文献一覧はエントリーキーをインデックスとするテーブル．値はLBIbTeX.Ciation.new()で生成される．
-\item preambleは文字列．
-\item stringsはキーをインデックスとするテーブル．
+\item aux ： auxファイル名
+\item style ： スタイル名
+\item cites ： 引用されている文献一覧
+\item bibs ： データベース名一覧
 \end{itemize}
-この段階では，\verb|#|による文字列の結合などは行われません．
-LBibTeX.LBibTX.apply\_macro\_to\_str を用いることで，「正しい」結果を得ることができます．
-
-\subsubsection{function LBibTeX.LBibTeX:read()}
-LBibTeX.LBibTeX.newで指定された情報に基づき，データベースからの読み込みを行います．
-この段階で
-\begin{itemize}
-\item LBibTeX.LBibTeX.cites に引用されている文献一覧のデータが設定され
-\item LBibTeX.LBibTeX.macros にstringsの一覧が設定され
-\end{itemize}
-ます．
-read\_database と違い，\verb|#|による文字列の結合や，@stringで定義されたマクロの展開が行われます．
-マクロは@stringで定義されたもののほか，read時にLBibTeX.LBibTeX.macrosに保持されていたものも展開されます．
-また内部にデータベース全体を保持し，これ以降get\_db が利用可能になります．
-
-
-\subsubsection{function LBibTeX.LBibTeX:get\_db(key)}
-LBibTeX.LBibTeX:read()において読み込んだデータベースから文献情報を読み出します．
-
-\subsubsection{function LBibTeX.LBibTeX:set\_db(key,c)}
-文献情報をセットします．
-
-\subsubsection{function LBibTeX.LBibTeX:add\_to\_citations(key)}
-エントリーキーがkeyの物を，LBibTeX.LBibTeX.citesに追加します．
-
-\subsubsection{function LBibTeX.LBibTeX.apply\_macro\_to\_str(str,macros)}
-strにマクロ展開（macrosであたえる），文字列結合などの処理を行った結果を返します．
 
 \subsubsection{function LBibTeX.LBibTeX:output(s)}
 文字列sを.bblへ出力します．
@@ -519,9 +513,9 @@ add_inherit(
 \subsubsection{function LBibTeX.CrossReference:add\_except(source\_type,target\_type,source\_key,target\_key)}
 add\_inherit での指定に対する例外を指定します．指定方法はadd\_inherit と同様です．
 
-\subsubsection{function LBibTeX.CrossReference:modify\_citations(bibtex)}
-add\_inherit 等の指定に従い，文献一覧情報を変更します．
-bibtexにはLBibTeX.LBibTeX.newで生成したテーブルを渡します．
+\subsubsection{function LBibTeX.CrossReference:modify\_citations(cites,db)}
+add\_inherit 等の指定に従い，文献一覧情報を変更し，変更した結果のcitesを返します．
+citesはLBibTeX.Citation.newで生成したテーブルの配列，dbにはLBibTeX.Database.newで生成したテーブルを渡します．
 
 \subsubsection{function LBibTeX.CrossReference:make\_formatter(orig\_formatter,crossref\_formatter)}
 Cross Reference用のフィールドが定義されていればcrossref\_formatter[type]を，そうでなければorig\_formatter[type]を呼び出す関数からなるテーブルを作成します．
@@ -533,7 +527,6 @@ typeは文献のタイプです．
 
 \subsubsection{function LBibTeX.Template.new()}
 新たなテーブルを作ります．
-\verb|setmetatable(obj,{__index = LBibTeX.Template})|されています．
 
 
 \subsubsection{function LBibTeX.Template:make(templs,funcs)}

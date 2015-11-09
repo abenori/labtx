@@ -112,17 +112,17 @@ local function table_include(array,val)
 	return false
 end
 
-function LBibTeX.CrossReference:modify_citations(bibtex)
+function LBibTeX.CrossReference:modify_citations(cites,db)
 	if type(self.reference_key_name) == "string" then self.reference_key_name = U(self.reference_key_name) end
 	local referred_table = {}
 	local referred_num = {}
-	for i = 1,#bibtex.cites do
-		local key = bibtex.cites[i].fields[self.reference_key_name]
+	for i = 1,#cites do
+		local key = cites[i].fields[self.reference_key_name]
 		if key ~= nil then
 			key = key:lower()
-			local referred = bibtex.db[key]
+			local referred = db.db[key]
 			if referred == nil then
-				bibtex.cites[i].fields[self.reference_key_name] = nil
+				cites[i].fields[self.reference_key_name] = nil
 			else
 				if referred_table[key] == nil then
 					referred_table[key] = referred
@@ -130,8 +130,8 @@ function LBibTeX.CrossReference:modify_citations(bibtex)
 				else
 					referred_num[key] = referred_num[key] + 1
 				end
-				local inherit = get_fields(self.inherit,referred.type,bibtex.cites[i].type)
-				local except = get_fields(self.except,referred.type,bibtex.cites[i].type)
+				local inherit = get_fields(self.inherit,referred.type,cites[i].type)
+				local except = get_fields(self.except,referred.type,cites[i].type)
 				local ruled_keys = {}
 				if inherit ~= nil then
 					for k,v in pairs(inherit) do
@@ -148,13 +148,13 @@ function LBibTeX.CrossReference:modify_citations(bibtex)
 						if inherit ~= nil and inherit[k] ~= nil then
 							local array = array_add(inherit[k],inherit[LBibTeX.CrossReference.all_type])
 							for j = 1,#array do
-								if not table_include(except_array,array[j]) and (override or bibtex.cites[i].fields[array[j]] == nil) then
-									bibtex.cites[i].fields[array[j]] = referred.fields[k]
+								if not table_include(except_array,array[j]) and (override or cites[i].fields[array[j]] == nil) then
+									cites[i].fields[array[j]] = referred.fields[k]
 								end
 							end
 						else
-							if self.all and (self.override or bibtex.cites[i].fields[k] == nil) and (not table_include(ruled_keys,k) and not table_include(except_array,k)) then
-								bibtex.cites[i].fields[k] = referred.fields[k]
+							if self.all and (self.override or cites[i].fields[k] == nil) and (not table_include(ruled_keys,k) and not table_include(except_array,k)) then
+								cites[i].fields[k] = referred.fields[k]
 							end
 						end
 					end
@@ -163,9 +163,11 @@ function LBibTeX.CrossReference:modify_citations(bibtex)
 		end
 	end
 	for k,v in pairs(referred_table) do
-		if referred_num[k] >= self.mincrossrefs then bibtex:add_to_citations(k) end
+		if referred_num[k] >= self.mincrossrefs then
+			table.insert(cites,db.db[k])
+		end
 	end
-	return bibtex
+	return cites
 end
 
 function LBibTeX.CrossReference:make_formatter(orig_formatter,crossref_formatter)

@@ -1,4 +1,5 @@
-local use_icu = true
+local use_icu = false
+
 if LBibTeX ~= nil and LBibTeX.use_icu ~= nil then use_icu = LBibTeX.use_icu end
 
 if use_icu then
@@ -15,6 +16,9 @@ local function UAsFunction(self,x) return x end
 setmetatable(icu.ustring,{__call = UAsFunction})
 function icu.ustring.encode(s,t) return s end
 function icu.ustring.decode(s,t) return s end
+icu.ustring.lower = string.lower
+icu.ustring.upper = string.upper
+
 icu.ufile = io
 
 icu.collator = {}

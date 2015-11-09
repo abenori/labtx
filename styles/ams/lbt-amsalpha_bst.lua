@@ -8,8 +8,7 @@ for v,k in pairs(ams_style.macros) do
 	BibTeX.macros[v] = k
 end
 
-BibTeX:read()
-ams_style.CrossReference:modify_citations(BibTeX)
+BibTeX.cites = ams_style.CrossReference:modify_citations(BibTeX.cites,BibTeX)
 BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
 -- label

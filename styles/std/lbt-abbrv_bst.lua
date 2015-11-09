@@ -38,8 +38,7 @@ BibTeX.macros[U"toplas"] = U"ACM Trans. Prog. Lang. Syst."
 BibTeX.macros[U"tcs"] = U"Theoretical Comput. Sci."
 
 
-BibTeX:read()
-std_styles.CrossReference:modify_citations(BibTeX)
+BibTeX.cites = std_styles.CrossReference:modify_citations(BibTeX.cites,BibTeX)
 BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
 
 function std_styles.Template.Formatter:nameformat(c) return "{f.~}{vv~}{ll}{, jj}" end

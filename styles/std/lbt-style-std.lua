@@ -383,7 +383,7 @@ function std_styles.Template.Formatter:book_crossref(c)
 	r = U""
 	if c.fields["volume"] == nil then r = U"In "
 	else r = U"Volume" .. tie_or_space(c.fields["volume"]) .. U" of " end
-	if c.fields["editor"] ~= nil or c.fields["editor"] == c.fields["author"] then
+	if c.fields["editor"] ~= nil and c.fields["editor"] == c.fields["author"] then
 		r = r .. self:editor_crossref(c)
 	elseif c.fields["key"] ~= nil then r = r .. c.fields["key"]
 	elseif c.fields["series"] ~= nil then r = r .. U"{\\em " .. c.fields["series"] .. U"\\/}"
@@ -402,7 +402,7 @@ end
 
 function std_styles.Template.Formatter:incollection_crossref(c)
 	local r = U""
-	if c.fields["editor"] ~= nil or c.fields["editor"] == c.fields["author"] then
+	if c.fields["editor"] ~= nil and c.fields["editor"] == c.fields["author"] then
 		return U"In " .. self:editor_crossref(c)
 	elseif c.fields["key"] ~= nil then return U"In " .. c.fields["key"]
 	elseif c.fields["booktitle"] ~= nil then return U"In {\\em " .. c.fields["booktitle"] .. U"\\/}"

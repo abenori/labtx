@@ -20,8 +20,9 @@ local function get_filename(fullpath)
 	else return fullpath:sub(r) end
 end
 
-BibTeX,msg = LBibTeX.LBibTeX.new(file)
-if BibTeX == nil then print(msg) os.exit(1) end
+BibTeX = LBibTeX.LBibTeX.new()
+local b,msg = BibTeX:load_aux(file)
+if b == false then print(msg) os.exit(1) end
 BibTeX:message(U"The top-level auxiliary file: " .. get_filename(file))
 local style = kpse.find_file("lbt-" .. U.encode(BibTeX.style) .. "_bst.lua","lua")
 if style == nil then 
@@ -29,16 +30,6 @@ if style == nil then
 	os.exit(3)
 end
 BibTeX:message(U"The style file: " .. get_filename(style))
-
-for i = 1,#BibTeX.bibs do
-	local bib = kpse.find_file(U.encode(BibTeX.bibs[i],"Shift-JIS"),"bib")
-	if bib == nil then 
-		BibTeX:error(U"cannot find " .. BibTeX.bibs[i])
-	else
-		BibTeX.bibs[i] = U(bib,"Shift-JIS")
-		BibTeX:message(U"Database file #" .. U(tostring(i)) .. U": " .. get_filename(BibTeX.bibs[i]))
-	end
-end
 
 --local style_file_exec = loadfile(style,"t")
 function style_file_exec()
