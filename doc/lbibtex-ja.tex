@@ -11,6 +11,7 @@
   keywordstyle=[3]\bfseries\color{Purple3},% labels
   stringstyle=\bfseries\color{Coral4},% strings
   commentstyle=\gtfamily\color{Green4},% comments
+  lineskip=-0.5zw,
 }
 \lstset{style=Lua,tabsize=2,showspaces=false}
 \DeclareRobustCommand{\LBibTeX}{L\BibTeX}
@@ -248,7 +249,7 @@ print(str:len()) -- 7
 全ては\verb|LBibTeX|以下に定義されています．
 \begin{itemize}
 \item テーブルCLASSにCLASS.newという関数がある場合，最後に\verb|setmetatable(obj,{__index = CLASS})|して返されます．
-\item テーブルAがテーブルBを継承しているとは，\verb|setmetatable(CLASSA,{__index = CLASSB}|がされていることです．
+\item テーブルAがテーブルBを継承しているとは，\verb|setmetatable(CLASSA,{__index = CLASSB})|がされていることです．
 \end{itemize}
 
 \subsection{lbt-database}\label{subsec:lbt-database}
@@ -299,6 +300,45 @@ data.fields[key]にマクロを施した結果を得ます．
 \item style ： スタイル名
 \item cites ： 引用されている文献一覧
 \item bibs ： データベース名一覧
+\item aux\_contents ： .aux内に現れるコントロールシークエンスの一覧．
+たとえば
+\begin{verbatim}
+\relax
+\citation{cite1}
+\citation{cite2}
+\somecs{arg1-1}[arg1-2]{arg1-3}
+\somecs(arg2-1)(arg2-2)[arg2-3}
+\end{verbatim}
+という.auxファイルに対しては次のテーブルが生成されます．
+\begin{lstlisting}
+{
+	"citation" = 
+	{
+		{
+			{arg = "cite1",open = "{",close = "}"}
+		}
+	},
+	{
+		{
+			{arg = "cite2",open = "{",close = "}"}
+		}
+	}
+	
+	"somecs" = 
+	{
+		{
+			{arg = "arg1-1",open = "{",close = "}"},
+			{arg = "arg1-2",open = "[",close = "]"},
+			{arg = "arg1-3",open = "{",close = "}"},
+		},
+		{
+			{arg = "arg2-1",open = "(",close = ")"},
+			{arg = "arg2-2",open = "(",close = ")"},
+			{arg = "arg2-3",open = "{",close = "}"},
+		}
+	}
+}
+\end{lstlisting}
 \end{itemize}
 
 \subsubsection{function LBibTeX.LBibTeX:output(s)}
@@ -411,7 +451,7 @@ formatで与える書式は次の形です．
 \item \verb|<str1>|はそのまま出力される．
 \item \verb|<name1>|はl，ll，f，ff，v，vv，j，jjの何れか．Last name，First name，von part，jr partに対応し，二つ続いているものは名前全体を，そうでないものは短縮形を表す．
 \item \verb|<before1>|はそのまま出力される．ただし\verb|<name1>|に対応する部分がない場合，出力されない．
-\item \verb|<after1>|は\verb|{<sep1>}<after1_>|か\verb|<after1_>|（中括弧なし）の何れかである．\verb|<sep1>|は\verb|<name1>|の各部分をつなぐ文字として使われ，\verb|<after1_>|は次の部分とのつなぐ文字として使われる．\verb|<sep1>|が省略された場合や，\verb|"~"|であった場合は，空白（\verb|" "|か\verb|"~"|）が状況に応じて使われる．もし常に\verb|"~~"|を出力したい場合は，\verb|"~~"|を指定する．
+\item \verb|<after1>|は\verb|{<sep1>}<after1_>|か\verb|<after1_>|（中括弧なし）の何れかである．\verb|<sep1>|は\verb|<name1>|の各部分をつなぐ文字として使われ，\verb|<after1_>|は次の部分とのつなぐ文字として使われる．\verb|<sep1>|が省略された場合や，\verb|"~"|であった場合は，空白（\verb|" "|か\verb|"~"|）が状況に応じて使われる．もし常に\verb|"~"|を出力したい場合は，\verb|"~~"|を指定する．
 \item \verb|<str2>|等も同様．
 \end{itemize}
 

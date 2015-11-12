@@ -311,7 +311,7 @@ local function read_database(file)
 	return db,preamble,macros
 end
 
-local function citation_get_fields(table, key)
+local function Database_fields__index(table, key)
 	local meta = getmetatable(table)
 	local x = rawget(meta.__real_fields,key)
 	if x == nil and type(key) == "string" then x = rawget(meta.__real_fields,U(key)) end
@@ -328,11 +328,22 @@ local function citation_get_fields(table, key)
 	return meta.__parent_database:apply_macro_to_str(x,meta.__bib)
 end
 
+local function Database_fields__next(table,index)
+	local meta = getmetatable(table)
+	local a,b = next(meta.__real_fields,index)
+	if b == nil then return a,b
+	else return a,meta.__parent_database:apply_macro_to_str(b,meta.__bib) end
+end
+
+local function Database_fields__pairs(t)
+	return Database_fields__next,t,nil
+end
+
 function LBibTeX.Database:add_db(cite)
 	local real_fields = cite.fields
 	local key = cite.key
 	cite.fields = {}
-	setmetatable(cite.fields,{__index = citation_get_fields,__real_fields = real_fields,__parent_database = self, __data = cite});
+	setmetatable(cite.fields,{__index = Database_fields__index,__real_fields = real_fields,__parent_database = self, __data = cite,__pairs = Database_fields__pairs});
 	self.db[key] = cite
 end
 

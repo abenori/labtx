@@ -27,15 +27,15 @@ function LBibTeX.LBibTeX:load_aux(file)
 	self.aux_contents = aux
 	self.cites = {}
 	if aux["citation"] ~= nil then
-		for k,v in pairs(aux["citation"]) do
-			if v[1] ~= nil then
-				if v[1].arg == "*" then
+		for i = 1,#aux["citation"] do
+			if aux["citation"][i][1] ~= nil then
+				if aux["citation"][i][1].arg == "*" then
 					self.cites = nil
 					break
 				else
-					if not includeskey(self.cites,v[1].arg) then
+					if not includeskey(self.cites,aux["citation"][i][1].arg) then
 						local c = LBibTeX.Citation.new()
-						c.key = v[1].arg
+						c.key = aux["citation"][i][1].arg
 						table.insert(self.cites,c)
 					end
 				end
@@ -51,16 +51,16 @@ function LBibTeX.LBibTeX:load_aux(file)
 	end
 	self.bibs = {}
 	if aux["bibdata"] ~= nil then
-		for k,v in pairs(aux["bibdata"]) do
-			if v[1] ~= nil then
+		for i = 1,#aux["bibdata"] do
+			if aux["bibdata"][i][1] ~= nil then
 				local p = 0
 				while true do
-					local q = v[1].arg:find(U",",p)
+					local q = aux["bibdata"][i][1].arg:find(U",",p)
 					if q == nil then
-						table.insert(self.bibs,v[1].arg:sub(p))
+						table.insert(self.bibs,aux["bibdata"][i][1].arg:sub(p))
 						break
 					else
-						table.insert(self.bibs,v[1].arg:sub(p,q - 1))
+						table.insert(self.bibs,aux["bibdata"][i][1].arg:sub(p,q - 1))
 					end
 					p = q + 1;
 				end
