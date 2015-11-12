@@ -24,12 +24,60 @@ end
 
 function LBibTeX.LBibTeX:load_aux(file)
 	local aux = LBibTeX.LBibTeX.read_aux(file)
-	self.style = aux.style
-	self.aux = aux.aux
-	self.cites = aux.cites
-	self.bibs = aux.bibs
-	self.bbl = icu.ufile.open(U.encode(aux.bbl),"w")
-	self.blg = icu.ufile.open(U.encode(aux.blg),"w")
+	self.aux_contents = aux
+	self.cites = {}
+	if aux["citation"] ~= nil then
+		for k,v in pairs(aux["citation"]) do
+			if v[1] ~= nil then
+				if v[1].arg == "*" then
+					self.cites = nil
+					break
+				else
+					if not includeskey(self.cites,v[1].arg) then
+						local c = LBibTeX.Citation.new()
+						c.key = v[1].arg
+						table.insert(self.cites,c)
+					end
+				end
+			end
+		end
+	end
+	if aux["bibstyle"] ~= nil then
+		if aux["bibstyle"][1] ~= nil then
+			if aux["bibstyle"][1][1] ~= nil then
+				self.style = aux["bibstyle"][1][1].arg
+			end
+		end
+	end
+	self.bibs = {}
+	if aux["bibdata"] ~= nil then
+		for k,v in pairs(aux["bibdata"]) do
+			if v[1] ~= nil then
+				local p = 0
+				while true do
+					local q = v[1].arg:find(U",",p)
+					if q == nil then
+						table.insert(self.bibs,v[1].arg:sub(p))
+						break
+					else
+						table.insert(self.bibs,v[1].arg:sub(p,q - 1))
+					end
+					p = q + 1;
+				end
+			end
+		end
+	end
+	local r = file:find(U"%.[^./]*$")
+	local bbl,blg
+	if r == nil then
+		bbl = file .. U".bbl"
+		blg = file .. U".blg"
+	else
+		bbl = file:sub(1,r) .. U"bbl"
+		blg = file:sub(1,r) .. U"blg"
+	end
+	self.bbl = icu.ufile.open(U.encode(bbl),"w")
+	self.blg = icu.ufile.open(U.encode(blg),"w")
 	self.warning_count = 0
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
@@ -95,72 +143,47 @@ local function getargument(str)
 end
 
 -- style/aux/cites/bibs/bbl/blg
+-- \cs{ab}[cd](ef)みたいなのを読む．
+-- 戻り：rv["cs"]：配列，それぞれ{arg = "ab",open="{",close="}"}みたいな．
+-- rv["cs"][1][2] : 一つ目の\csの2つめの引数
 function LBibTeX.LBibTeX.read_aux(file)
-	local citation = {}
-	local database = {}
-	local bbl = {}
-	local citeall = false
-	local f
-	local style
 	if type(file) ~= "string" then f = U.encode(file)
 	else f = file  file = U(file) end
 	local fp,msg = io.open(f,"r")
 	if fp == nil then return nil,msg end
 	fp:close()
 	fp = icu.ufile.open(f,"r","UTF-8")
+	local rv = {}
 	for line in fp:lines() do
-		local r = line:find(U"\\citation{")
-		if r ~= nil then
-			local a = getargument(line:sub(r))
-			if a == U"*" then
-				citeall = true
+		if line:sub(1,1) == "\\" then
+			local p = line:find("[%[{%(]")
+			local cs = ""
+			if p == nil then
+				cs = line
+				line = ""
 			else
-				if not includeskey(citation,a) then
-					local c = LBibTeX.Citation.new()
-					c.key = a
-					table.insert(citation,c)
-				end
+				cs = line:sub(2,p - 1)
+				line = line:sub(p)
 			end
-		end
-		r = line:find(U"\\bibstyle{")
-		if r ~= nil then
-			style = getargument(line:sub(r))
-		end
-		r = line:find(U"\\bibdata{")
-		if r ~= nil then
-			local p = 1
-			local a = getargument(line:sub(r))
+			if rv[cs] == nil then rv[cs] = {} end
+			local args = {}
 			while true do
-				local q = a:find(U",",p)
-				if q == nil then
-					table.insert(database,a:sub(p))
-					break
-				else
-					table.insert(database,a:sub(p,q - 1))
-				end
-				p = q + 1;
+				local op = line:sub(1,1)
+				local cld = ""
+				if op == "{" then cld = "}"
+				elseif op == "(" then cld = ")"
+				elseif op == "[" then cld = "]"
+				else break end
+				local p,q = line:find("%b" .. op .. cld)
+				if p ~= nil then
+					table.insert(args,{arg = line:sub(p + 1,q - 1),open = op, close = cld})
+					line = line:sub(q + 1)
+				else break end
 			end
+			table.insert(rv[cs],args)
 		end
 	end
-	fp:close()
-	local obj = {}
-	obj.style = style
-	local r = file:find(U"%.[^./]*$")
-	local bbl,blg
-	if r == nil then
-		bbl = file .. U".bbl"
-		blg = file .. U".blg"
-	else
-		bbl = file:sub(1,r) .. U"bbl"
-		blg = file:sub(1,r) .. U"blg"
-	end
-	obj.aux = file
-	if citeall then obj.cites = nil
-	else obj.cites = citation end
-	obj.bibs = database
-	obj.bbl = bbl
-	obj.blg = blg
-	return obj;
+	return rv
 end
 
 local function table_connect(a,b)
