@@ -1,8 +1,6 @@
 require "lbt-funcs"
 require "lbt-template"
 std_styles = require "lbt-style-std"
-local icu = require "lbt-string"
-local U = icu.ustring
 
 for v,k in pairs(std_styles.macros) do
 	BibTeX.macros[v] = k
@@ -26,12 +24,12 @@ local lastname = nil
 for i = 1,#BibTeX.cites - 1 do
 	if BibTeX.cites[i].label == BibTeX.cites[i + 1].label then
 		lastchar = lastchar + 1
-		BibTeX.cites[i].label = BibTeX.cites[i].label .. U(string.char(lastchar))
+		BibTeX.cites[i].label = BibTeX.cites[i].label .. string.char(lastchar)
 		changed = true
 	else
 		if changed then
 			lastchar = lastchar + 1
-			BibTeX.cites[i].label = BibTeX.cites[i].label .. U(string.char(lastchar))
+			BibTeX.cites[i].label = BibTeX.cites[i].label .. string.char(lastchar)
 		end
 		lastchar = string.byte("a") - 1
 		changed = false

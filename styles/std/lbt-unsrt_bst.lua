@@ -1,8 +1,6 @@
 require "lbt-funcs"
 require "lbt-template"
 std_styles = require "lbt-style-std"
-local icu = require "lbt-string"
-local U = icu.ustring
 
 for v,k in pairs(std_styles.macros) do
 	BibTeX.macros[v] = k

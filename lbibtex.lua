@@ -1,7 +1,5 @@
 local start_time = os.clock()
 kpse.set_program_name("pbibtex")
-local icu = require "lbt-string"
-local U = icu.ustring
 require "lbt-core"
 
 local f = arg[1]
@@ -14,8 +12,7 @@ if file == nil then
 end
 
 local function get_filename(fullpath)
-	if type(fullpath) == "string" then fullpath = U(fullpath) end
-	local r = fullpath:find(U"[^/]*$")
+	local r = fullpath:find("[^/]*$")
 	if r == nil then return fullpath
 	else return fullpath:sub(r) end
 end
@@ -23,13 +20,13 @@ end
 BibTeX = LBibTeX.LBibTeX.new()
 local b,msg = BibTeX:load_aux(file)
 if b == false then print(msg) os.exit(1) end
-BibTeX:message(U"The top-level auxiliary file: " .. get_filename(file))
-local style = kpse.find_file("lbt-" .. U.encode(BibTeX.style) .. "_bst.lua","lua")
+BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
+local style = kpse.find_file("lbt-" .. BibTeX.style .. "_bst.lua","lua")
 if style == nil then 
-	BibTeX:error(U"style " .. BibTeX.style .. U" is not found")
+	BibTeX:error("style " .. BibTeX.style .. " is not found")
 	os.exit(3)
 end
-BibTeX:message(U"The style file: " .. get_filename(style))
+BibTeX:message("The style file: " .. get_filename(style))
 
 --local style_file_exec = loadfile(style,"t")
 function style_file_exec()

@@ -1,7 +1,5 @@
 require "lbt-core"
 require "lbt-item"
-local icu = require "lbt-string"
-local U = icu.ustring
 
 --[[
 書式をあたえるとスタイルを生成してくれるようにする．
@@ -25,7 +23,7 @@ LBibTeX.Template = {}
 
 local function isempty(array)
 	for i = 1,#array do
-		if array[i] ~= nil and array[i] ~= U"" then return false end
+		if array[i] ~= nil and array[i] ~= "" then return false end
 	end
 	return true
 end
@@ -48,7 +46,7 @@ local function findUnescaped(str,chars,pos)
 	local p1,p2
 	p2 = pos
 	while true do
-		p1,p2 = str:find(U"%%*[" .. chars .. U"]",p2)
+		p1,p2 = str:find("%%*[" .. chars .. "]",p2)
 		if p1 == nil then
 			return nil
 		elseif (p2 - p1) % 2 == 0 then
@@ -60,12 +58,12 @@ local function findUnescaped(str,chars,pos)
 end
 
 local function string_to_array(s)
-	if s == nil or s == U"" then return {U""}
+	if s == nil or s == "" then return {""}
 	else return {s} end
 end
 
 local function array_to_string(a)
-	local r = U""
+	local r = ""
 	for i = 1,#a do r = r .. a[i] end
 	return r
 end
@@ -78,8 +76,8 @@ local function GetArrayOfBlocks(str,beg,en,sep,pos)
 	local r = pos
 	local blockstart = pos
 	local search
-	if sep ~= nil then search = (beg .. en .. sep):gsub(U"[%[%]]",U"%%%1")
-	else search = (beg .. en):gsub(U"[%[%]]",U"%%%1") end
+	if sep ~= nil then search = (beg .. en .. sep):gsub("[%[%]]","%%%1")
+	else search = (beg .. en):gsub("[%[%]]","%%%1") end
 	while true do
 		r = findUnescaped(str,search,r)
 		if r == nil then
@@ -150,9 +148,9 @@ function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 	local f = {}
 	local seps = {}
 	for i = 1,#array do
-		if array[i]:sub(1,1) == U"@" then
-			if array[i]:sub(2,2) == U"S" then 
-				local a,r = GetArrayOfBlocks(array[i],U"<",U">",nil,4)
+		if array[i]:sub(1,1) == "@" then
+			if array[i]:sub(2,2) == "S" then 
+				local a,r = GetArrayOfBlocks(array[i],"<",">",nil,4)
 				if a == nil then return nil end
 				seps[i] = self:MakeTemplateImpl(a[1],funcs,blocknest + 1)
 				array[i] = array[i]:sub(r)
@@ -182,14 +180,14 @@ function LBibTeX.Template:MakeStringFunction(array,funcs,bocknest)
 	local f3 = self:MakeTemplateImpl(array[3],funcs,blocknest)
 	if f1 == nil or f2 == nil or f3 == nil then return nil end
 	return function(c)
-		local x = U""
+		local x = ""
 		for i = 1,#f2(c) do
 			x = x .. f2(c)[i]
 		end
 		if not isempty(f2(c)) then
 			return table_connect(table_connect(f1(c),f2(c)),f3(c))
 		else
-			return {U""}
+			return {""}
 		end
 	end
 end
@@ -204,7 +202,6 @@ function LBibTeX.Template:MakeFormatFunction(array,funcs)
 				local r = c.fields[array[i]]
 				if r == nil then return nil
 				elseif r.toustring ~= nil then return r:toustring()
-				elseif type(r) == "string" then return U(r)
 				else return r end
 			end
 		elseif type(f) ~= "function" then
@@ -218,38 +215,30 @@ function LBibTeX.Template:MakeFormatFunction(array,funcs)
 			local s = ff[i](funcs,c)
 			if s ~= nil then
 				if type(s) == "table" then
-					for i = 1,#s do
-						if type(s[i]) == "string" then s[i] = U(s[i])
-						elseif s[i].toustring ~= nil then s[i] = s[i]:toustring()
-						end
-					end
 					if not isempty(s) then return s end
 				else
-					if type(s) == "string" then s = U(s)
-					elseif s.toustring ~= nil then s = s:toustring()
-					end
-					if s ~= U"" then return {s} end
+					if s ~= "" then return {s} end
 				end
 			end
 		end
-		return {U""}
+		return {""}
 	end
 end
 
 function UnEscape(str)
-	return str:gsub(U"%%(.)",U"%1")
+	return str:gsub("%%(.)","%1")
 end
 
 LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
-	local bra = findUnescaped(templ,U"%[<",1)
+	local bra = findUnescaped(templ,"%[<",1)
 	if bra == nil then
 		return function(c) return string_to_array(UnEscape(templ)) end
 	end
-	if templ:sub(bra,bra) == U"[" then
+	if templ:sub(bra,bra) == "[" then
 		-- [A:B:...]
-		local array,r = GetArrayOfBlocks(templ,U"[",U"]",U":",bra + 1)
+		local array,r = GetArrayOfBlocks(templ,"[","]",":",bra + 1)
 		if r == nil then ------------------ syntax error
-			LBibTeX.Template.LastMsg = U"template error found in " .. templ
+			LBibTeX.Template.LastMsg = "template error found in " .. templ
 			return nil
 		end
 		local f1 = self:MakeBlockFunction(array,funcs,blocknest)
@@ -260,17 +249,17 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 		local r1
 		local r2 = 0
 		while r2 ~= bra and r2 ~= nil do
-			r1,r2 = templ:find(U"%%*$<",r2 + 1)
+			r1,r2 = templ:find("%%*$<",r2 + 1)
 		end
 		if r1 == nil or (r2 - r1) % 2 == 0 then
 			-- <A|B|C>
-			local array,r = GetArrayOfBlocks(templ,U"<",U">",U"|",bra + 1)
+			local array,r = GetArrayOfBlocks(templ,"<",">","|",bra + 1)
 			if r == nil then ------------------ syntax error
-				LBibTeX.Template.LastMsg = U"template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error found in " .. templ
 				return nil
 			end
 			if #array ~= 3 then ------------------ syntax error
-				LBibTeX.Template.LastMsg = U"template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error found in " .. templ
 				return nil
 			end
 			local f1 = self:MakeStringFunction(array,funcs,blocknest)
@@ -279,9 +268,9 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 			return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 1))),f1(c)),f2(c)) end
 		else
 			-- $<A|B|...>
-			local array,r = GetArrayOfBlocks(templ,U"<",U">",U"|",bra + 1)
+			local array,r = GetArrayOfBlocks(templ,"<",">","|",bra + 1)
 			if r == nil then ------------------ syntax error
-				LBibTeX.Template.LastMsg = U"template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error found in " .. templ
 				return nil
 			end
 			local f1 = self:MakeFormatFunction(array,funcs)
@@ -293,22 +282,15 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 end
 
 
-LBibTeX.Template.LastMsg = U""
+LBibTeX.Template.LastMsg = ""
 
 function LBibTeX.Template:modify_functions(funcs)
-	local funcs_u = {}
-	for k,v in pairs(funcs) do
-		local kk
-		if type(k) == "string" then kk = U(k) else kk = k end
-		funcs_u[kk] = v
-	end
-	
 	local ff = {}
 	while true do
 		local changed = false
-		for k,v in pairs(funcs_u) do
+		for k,v in pairs(funcs) do
 			if type(v) ~= "function" then
-				local f = self:make_from_str(v,funcs_u)
+				local f = self:make_from_str(v,funcs)
 				if f ~= nil then
 					ff[k] = function(dummy,c) return f(c) end
 					changed = true
@@ -316,12 +298,12 @@ function LBibTeX.Template:modify_functions(funcs)
 			else ff[k] = v end
 		end
 		if not changed then break end
-		funcs_u = ff
+		funcs = ff
 		ff = {}
 	end
 	local r = {}
 	for k,v in pairs(ff) do
-		r[U.encode(k)] = v
+		r[k] = v
 	end
 	for k,v in pairs(r) do
 		ff[k] = v
@@ -330,8 +312,7 @@ function LBibTeX.Template:modify_functions(funcs)
 end
 
 function LBibTeX.Template:make_from_str(templ,funcs)
-	LBibTeX.Template.LastMsg = U""
-	if type(templ) == "string" then templ = U(templ) end
+	LBibTeX.Template.LastMsg = ""
 	local f = self:MakeTemplateImpl(templ,funcs,1)
 	if f == nil then
 		print(LBibTeX.Template.LastMsg)

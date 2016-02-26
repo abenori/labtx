@@ -1,6 +1,3 @@
-local icu = require "lbt-string"
-local U = icu.ustring
-
 if LBibTeX == nil then LBibTeX = {} end
 
 require "lbt-database"
@@ -20,6 +17,13 @@ function LBibTeX.LBibTeX.new()
 	obj.bbl = nil
 	obj.blg = nil
 	return setmetatable(obj,{__index = LBibTeX.LBibTeX})
+end
+
+local function includeskey(table,key)
+	for i = 1, #table do
+		if key == table[i].key then return true end
+	end
+	return false
 end
 
 function LBibTeX.LBibTeX:load_aux(file)
@@ -55,7 +59,7 @@ function LBibTeX.LBibTeX:load_aux(file)
 			if aux["bibdata"][i][1] ~= nil then
 				local p = 0
 				while true do
-					local q = aux["bibdata"][i][1].arg:find(U",",p)
+					local q = aux["bibdata"][i][1].arg:find(",",p)
 					if q == nil then
 						table.insert(self.bibs,aux["bibdata"][i][1].arg:sub(p))
 						break
@@ -67,17 +71,17 @@ function LBibTeX.LBibTeX:load_aux(file)
 			end
 		end
 	end
-	local r = file:find(U"%.[^./]*$")
+	local r = file:find("%.[^./]*$")
 	local bbl,blg
 	if r == nil then
-		bbl = file .. U".bbl"
-		blg = file .. U".blg"
+		bbl = file .. ".bbl"
+		blg = file .. ".blg"
 	else
-		bbl = file:sub(1,r) .. U"bbl"
-		blg = file:sub(1,r) .. U"blg"
+		bbl = file:sub(1,r) .. "bbl"
+		blg = file:sub(1,r) .. "blg"
 	end
-	self.bbl = icu.ufile.open(U.encode(bbl),"w")
-	self.blg = icu.ufile.open(U.encode(blg),"w")
+	self.bbl = io.open(bbl,"w")
+	self.blg = io.open(blg,"w")
 	self.warning_count = 0
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
@@ -85,7 +89,7 @@ function LBibTeX.LBibTeX:load_aux(file)
 			self:dispose()
 			return false,"Cannot find Database file " .. self.bibs[i]
 		else
-			self:message(U"Database file #" .. U(tostring(i)) .. U": " .. self.bibs[i])
+			self:message("Database file #" .. tostring(i) .. ": " .. self.bibs[i])
 		end
 	end
 	if self.cites == nil then
@@ -100,7 +104,7 @@ function LBibTeX.LBibTeX:load_aux(file)
 		while i <= n do
 			local k = self.cites[i].key
 			if self.db[k] == nil then
-				self:warning(U"I don't find a database entry for \"" .. k .. U"\"")
+				self:warning("I don't find a database entry for \"" .. k .. "\"")
 				table.remove(self.cites,i)
 				i = i - 1
 				n = n - 1
@@ -113,26 +117,19 @@ function LBibTeX.LBibTeX:load_aux(file)
 	return true
 end
 
-local function includeskey(table,key)
-	for i = 1, #table do
-		if key == table[i].key then return true end
-	end
-	return false
-end
-
 local function getargument(str)
-	local start = str:find(U"{")
+	local start = str:find("{")
 	if start == nil then return nil end
 	start = start + 1
 	local r = start
 	local nest = 0;
 	while true do
-		r = str:find(U"[{}]",r + 1)
+		r = str:find("[{}]",r + 1)
 		if r == nil then return nil end
 		local s = str:sub(r,r)
 		if s == "{" then
 			nest = nest + 1;
-		elseif s == U"}" then
+		elseif s == "}" then
 			if nest == 0 then
 				return str:sub(start,r - 1)
 			else
@@ -147,12 +144,8 @@ end
 -- 戻り：rv["cs"]：配列，それぞれ{arg = "ab",open="{",close="}"}みたいな．
 -- rv["cs"][1][2] : 一つ目の\csの2つめの引数
 function LBibTeX.LBibTeX.read_aux(file)
-	if type(file) ~= "string" then f = U.encode(file)
-	else f = file  file = U(file) end
-	local fp,msg = io.open(f,"r")
+	local fp,msg = io.open(file,"r","UTF-8")
 	if fp == nil then return nil,msg end
-	fp:close()
-	fp = icu.ufile.open(f,"r","UTF-8")
 	local rv = {}
 	for line in fp:lines() do
 		if line:sub(1,1) == "\\" then
@@ -183,6 +176,7 @@ function LBibTeX.LBibTeX.read_aux(file)
 			table.insert(rv[cs],args)
 		end
 	end
+	fp:close()
 	return rv
 end
 
@@ -218,20 +212,18 @@ function LBibTeX.LBibTeX:get_longest_label()
 end
 
 function LBibTeX.LBibTeX:output(s)
-	if type(s) == "string" then s = U(s) end
 	self.bbl:write(s)
 end
 
 function LBibTeX.LBibTeX:outputline(s)
-	if type(s) == "string" then s = U(s) end
-	self.bbl:write(s .. U"\n")
+	self.bbl:write(s .. "\n")
 end
 
-local emptystr = U""
-local trim_str1 = U"^[ \n\t]*"
-local trim_str2 = U"[ \n\t]*$"
+local emptystr = ""
+local trim_str1 = "^[ \n\t]*"
+local trim_str2 = "[ \n\t]*$"
 local function trim(str)
---	return str:gsub(U"^[ \n\t]*(.-)[ \n\t]*$",U"%1")
+--	return str:gsub("^[ \n\t]*(.-)[ \n\t]*$","%1")
 	return str:gsub(trim_str1,emptystr):gsub(trim_str2,emptystr)
 end
 
@@ -243,26 +235,22 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 			local f = formatter[t]
 			if f == nil then f = formatter[tostring(t)] end
 			if f == nil then
-				self:warning(U"no style is defined for " .. t)
-				f = formatter[U""]
+				self:warning("no style is defined for " .. t)
+				f = formatter[""]
 				if f == nil then f = formatter[""] end
-				if f == nil then self:error(U"default style is not defined") end
+				if f == nil then self:error("default style is not defined") end
 			else
-				local s = U"\\bibitem"
+				local s = "\\bibitem"
 				local label = self.cites[i].label
 				if label ~= nil then
-					if type(label) == "string" then label = U(label) end
-					s = s .. U"[" .. label .. U"]"
+					s = s .. "[" .. label .. "]"
 				end
 				local key = self.cites[i].key
-				if type(key) == "string" then key = U(key) end
-				s = s .. U"{" .. key .. U"}"
+				s = s .. "{" .. key .. "}"
 				self:outputline(s)
 				s = f(self.cites[i])
-				if type(s) == "string" then s = U(s)
-				elseif s.toustring ~= nil then s = s:toustring()
-				end
-				self:outputline(trim(s:gsub(U"  +",U" ")))
+				s = tostring(s);
+				self:outputline(trim(s:gsub("  +"," ")))
 				self:outputline(emptystr)
 			end
 		end
@@ -271,14 +259,14 @@ end
 
 function LBibTeX.LBibTeX:outputthebibliography(formatter)
 	local longest_label = self:get_longest_label()
-	if longest_label == nil then longest_label = U(tostring(#self.cites)) end
+	if longest_label == nil then longest_label = tostring(#self.cites) end
 	self:outputline(self.preamble)
-	self:outputline(U"\\begin{thebibliography}{" .. longest_label .. U"}")
+	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)
-	self:outputline(U"\\end{thebibliography}")
+	self:outputline("\\end{thebibliography}")
 end
 
-local equal = U"="
+local equal = "="
 
 -- key に = が入っていると失敗する．
 local function getkeyval(str)
@@ -291,29 +279,25 @@ end
 
 function LBibTeX.LBibTeX:warning(s)
 	self.warning_count = self.warning_count + 1
-	if type(s) == "string" then s = U(s) end
-	print(U"LBibTeX warning: " .. s)
-	if self.blg ~= nil then self.blg:write(U"LBibTeX warning: " .. s .. U"\n") end
+	print("LBibTeX warning: " .. s)
+	if self.blg ~= nil then self.blg:write("LBibTeX warning: " .. s .. "\n") end
 end
 
 function LBibTeX.LBibTeX:error(s,exit_code)
-	if type(s) == "string" then s = U(s) end
-	print(U"LBibTeX error: " .. s .. U"\n")
-	if self.blg ~= nil then self.blg:write(U"LBibTeX error: " .. s .. U"\n") end
+	print("LBibTeX error: " .. s .. "\n")
+	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
 	if exit_code == nil then exit_code = 1 end
 	self:dispose()
 	os.exit(exit_code)
 end
 
 function LBibTeX.LBibTeX:log(s)
-	if type(s) == "string" then s = U(s) end
-	if self.blg ~= nil then self.blg:write(s .. U"\n") end
+	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 function LBibTeX.LBibTeX:message(s)
 	print(s)
-	if type(s) == "string" then s = U(s) end
-	if self.blg ~= nil then self.blg:write(s .. U"\n") end
+	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 ---------------------------------------------------

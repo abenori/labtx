@@ -1,18 +1,15 @@
 require "lbt-core"
-local icu = require "lbt-string"
-local U = icu.ustring
 
 -- not compatible with text.prefix$ (at least at this point)
 function LBibTeX.text_prefix(str,num)
-	if type(str) == "string" then str = U(str) end
 	local r = 1
-	local rv = U""
+	local rv = ""
 	for i = 1,num do
-		if str:sub(r,r) ~= U"{" then
+		if str:sub(r,r) ~= "{" then
 			rv = rv .. str:sub(r,r)
 			r = r + 1
 		else
-			local p1,p2 = str:find(U"%b{}",r)
+			local p1,p2 = str:find("%b{}",r)
 			if p1 == nil then return rv end
 			rv = rv .. str:sub(p1,p2)
 			r = p2 + 1
@@ -22,15 +19,14 @@ function LBibTeX.text_prefix(str,num)
 end
 
 function LBibTeX.text_length(str)
-	if type(str) == "string" then str = U(str) end
 	local len = 0
 	local r = 1
 	local strlen = str:len()
 	while r <= strlen do
-		if str:sub(r,r) ~= U"{" then
+		if str:sub(r,r) ~= "{" then
 			r = r + 1
 		else
-			local p1,p2 = str:find(U"%b{}",r)
+			local p1,p2 = str:find("%b{}",r)
 			if p1 == nil then return len + 1 end
 			r = p2 + 1
 		end
@@ -43,7 +39,6 @@ end
 -- funcは見付かった最初と最後を返す
 -- 二つ目には分割していた文字を返す．
 function LBibTeX.string_split(str,func)
-	if type(str) == "string" then str = U(str) end
 	local array = {}
 	local separray = {}
 	local r = init
@@ -68,7 +63,7 @@ end
 local function findUnEscapedBracket(str,pos)
 	local r = pos
 	while true do
-		local q1,q2 = str:find(U"\\*[{}]",r)
+		local q1,q2 = str:find("\\*[{}]",r)
 		if q1 == nil then return nil
 		elseif (q2 - q1) %2 == 0 then return q2
 		else r = q2 + 1
@@ -86,7 +81,7 @@ local function getBracketInside(str,pos)
 		local p = findUnEscapedBracket(str,r)
 		if p == nil then return nil end
 		k = str:sub(p,p)
-		if k == U"{" then
+		if k == "{" then
 			if nest == 0 then start = p end
 			nest = nest + 1
 		else
@@ -101,7 +96,6 @@ end
 -- {}によるネストレベルが0のものを検索する．素の検索にはfuncを使う．
 -- {}は\によるエスケープも考慮する．
 function LBibTeX.find_nonnested(str,func,init)
-	if type(str) == "string" then str = U(str) end
 	local nest = 0
 	local r = init
 	if r == nil then r = 1 end
@@ -117,7 +111,7 @@ function LBibTeX.find_nonnested(str,func,init)
 			if nest == 0 then return p1,p2,s end
 			r = p2 + 1
 		elseif q ~= nil then
-			if str:sub(q,q) == U"{" then
+			if str:sub(q,q) == "{" then
 				nest = nest + 1
 			else
 				nest = nest - 1
@@ -128,13 +122,11 @@ function LBibTeX.find_nonnested(str,func,init)
 end
 
 function LBibTeX.split_names(names,seps)
-	if type(names) == "string" then names = U(names) end
-	if seps == nil then seps = {U" [aA][nN][dD] "} end
+	if seps == nil then seps = {" [aA][nN][dD] "} end
 	f = function(str)
 		local r1,r2,t = nil
 		for i = 1,#seps do
 			local sep = seps[i]
-			if type(sep) == "string" then sep = U(sep) end
 			local p1,p2,s = str:find(sep)
 			if p1 ~= nil and (r1 == nil or p1 < r1) then
 				r1 = p1
@@ -166,18 +158,18 @@ end
 -- そうでない場合，この{}内に小文字が最初に現れたらvonと判断
 -- ちょっといい加減に……
 local function Isvon(name)
-	local r = name:find(U"[a-zA-Z]")
+	local r = name:find("[a-zA-Z]")
 	local b = findUnEscapedBracket(name)
 	if r == nil then return false
 	elseif b == nil or b > r then
-		return r == name:find(U"[a-z]")
+		return r == name:find("[a-z]")
 	else
 		b = b + 1
-		p1,p2 = name:find(U"\\[a-zA-Z]+",b)
+		p1,p2 = name:find("\\[a-zA-Z]+",b)
 		if b ~= p1 then return false
 		else
 			k = name:sub(p1 + 1,p2)
-			return (k == U"i" or k == U"j" or k == U"oe" or k == U"aa" or k == U"o" or k == U"l" or k == U"ss")
+			return (k == "i" or k == "j" or k == "oe" or k == "aa" or k == "o" or k == "l" or k == "ss")
 		end
 	end
 end
@@ -213,7 +205,6 @@ end
 
 -- **.partsに名前を入れて，***.sepsに区切り文字を入れる
 function LBibTeX.get_name_parts(name)
-	if type(name) == "string" then name = U(name) end
 	-- analyzing name
 	local first,last,von,jr
 	first = {} first.parts = {} first.seps = {}
@@ -222,15 +213,15 @@ function LBibTeX.get_name_parts(name)
 	von = {} von.parts = {} von.seps = {}
 	
 	-- BibTeXではカンマ，white_space={" ","\t"}，sep_char={"~","-"}で区切る
-	local array,separray = LBibTeX.string_split(name:gsub(U"^[ ,\t~]*",U""):gsub(U"[ ,\t~]*$",U""),function(s) return LBibTeX.find_nonnested(s,function(t) return t:find(U"([ ,~\t%-]+)") end)end)
+	local array,separray = LBibTeX.string_split(name:gsub("^[ ,\t~]*",""):gsub("[ ,\t~]*$",""),function(s) return LBibTeX.find_nonnested(s,function(t) return t:find("([ ,~\t%-]+)") end)end)
 	local comma1 = nil
 	local comma2 = nil
 	for i = 1,#separray do
-		if separray[i]:sub(1,1) == U"," then comma1 = i break end
+		if separray[i]:sub(1,1) == "," then comma1 = i break end
 	end
 	if comma1 ~= nil then
 		for i = comma1 + 1,#separray do
-			if separray[i]:sub(1,1) == U"," then comma2 = i break end
+			if separray[i]:sub(1,1) == "," then comma2 = i break end
 		end
 	end
 	if comma1 == nil then
@@ -248,7 +239,7 @@ function LBibTeX.get_name_parts(name)
 			last.parts = {}last.seps = {}
 			for i = #array - 1,1,-1 do
 				table.insert(last.parts,1,array[i + 1])
-				if separray[i]:sub(1,1) ~= U"-" then
+				if separray[i]:sub(1,1) ~= "-" then
 					first_end = i
 					break
 				end
@@ -276,20 +267,13 @@ function LBibTeX.get_name_parts(name)
 end
 
 function LBibTeX.forat_name_by_parts(nameparts,format)
-	if type(format) == "string" then format = U(format) end
 	local nmpts = {}
 	for k,v in pairs(nameparts) do
 		nmpts[k] = v
-		for i = 1,#v.parts do
-			if type(nmpts[k].parts[i]) == "string" then nmpts[k].parts[i] = U(nmpts[k].parts[i]) end
-		end
-		for i = 1,#v.seps do
-			if type(nmpts[k].seps[i]) == "string" then nmpts[k].seps[i] = U(nmpts[k].seps[i]) end
-		end
 	end
 	local r = 1
-	formatted = U""
-	local lvjfsearch = function(s) return s:find(U"[lvjf]") end
+	formatted = ""
+	local lvjfsearch = function(s) return s:find("[lvjf]") end
 	while true do
 		-- {}を探して中身を処理する．
 		local p,q = getBracketInside(format,r)
@@ -304,13 +288,13 @@ function LBibTeX.forat_name_by_parts(nameparts,format)
 			-- lvjfがあった．
 			local k = str:sub(subptn,subptn):lower()
 			local target
-			if k == U"l" then target = nmpts.last
-			elseif k == U"v" then target = nmpts.von
-			elseif k == U"f" then target = nmpts.first
-			elseif k == U"j" then target = nmpts.jr
+			if k == "l" then target = nmpts.last
+			elseif k == "v" then target = nmpts.von
+			elseif k == "f" then target = nmpts.first
+			elseif k == "j" then target = nmpts.jr
 			end
 			if #target.parts ~= 0 then
-				local thispart = U""
+				local thispart = ""
 				thispart = thispart .. str:sub(1,subptn - 1)
 				local full,after
 				if str:sub(subptn + 1,subptn + 1) == k then
@@ -340,28 +324,28 @@ function LBibTeX.forat_name_by_parts(nameparts,format)
 					if full then name = target.parts[i]
 					else
 						name = LBibTeX.text_prefix(target.parts[i],1)
-						if i ~= #target.parts and sep == nil then name = name  .. U"." end
+						if i ~= #target.parts and sep == nil then name = name  .. "." end
 					end
 					if i ~= 1 then
 						-- 本当のseparatorの決定
 						local realsep = sep
 						-- " "を入れるか"~"を入れるか
 						if realsep == nil then
-							if target.seps[i - 1] == U"-" then realsep = U"-"
-							else realsep = U" " end
+							if target.seps[i - 1] == "-" then realsep = "-"
+							else realsep = " " end
 							local sepistie = (i == #target.parts or (i == 2 and (not full or target.parts[1]:len() <= 2)))
-							if realsep:sub(realsep:len()) == U" " and sepistie then
-								realsep = realsep:sub(1,realsep:len() - 1) .. U"~"
+							if realsep:sub(realsep:len()) == " " and sepistie then
+								realsep = realsep:sub(1,realsep:len() - 1) .. "~"
 							end
 						end
 						thispart = thispart .. realsep
 					end
 					thispart = thispart .. name
 				end
-				if (LBibTeX.text_length(thispart) + LBibTeX.text_length(after)) > 3 and after:sub(after:len()) == U"~" then
+				if (LBibTeX.text_length(thispart) + LBibTeX.text_length(after)) > 3 and after:sub(after:len()) == "~" then
 					after = after:sub(1,after:len() - 1)
-					if after:sub(after:len(),after:len()) ~= U"~" then
-						after = after .. U" "
+					if after:sub(after:len(),after:len()) ~= "~" then
+						after = after .. " "
 					end
 				end
 				formatted = formatted .. thispart .. after
@@ -392,14 +376,12 @@ end
 
 function LBibTeX.change_case(s,t)
 	t = t:lower()
-	if type(t) == "string" then t = U(t) end
-	if type(s) == "string" then s = U(s) end
-	if t == U"t" then
+	if t == "t" then
 		local f = function(s)
-			local r = U""
+			local r = ""
 			local p = 0
 			while true do
-				local p1,p2 = s:find(U": *.",p)
+				local p1,p2 = s:find(": *.",p)
 				if p1 == nil then
 					return r .. s:sub(p):lower()
 				else
@@ -409,29 +391,22 @@ function LBibTeX.change_case(s,t)
 			end
 		end
 		local start = 2
-		if s:sub(1,1) == U"{" then start = 1 end
+		if s:sub(1,1) == "{" then start = 1 end
 		return apply_function_to_nonnested_str(s,f,start)
-	elseif t == U"u" then
-		return apply_function_to_nonnested_str(s,U.upper)
-	elseif t == U"l" then
-		return apply_function_to_nonnested_str(s,U.lower)
+	elseif t == "u" then
+		return apply_function_to_nonnested_str(s,string.upper)
+	elseif t == "l" then
+		return apply_function_to_nonnested_str(s,string.lower)
 	else return nil
 	end
 end
 
 function LBibTeX.make_name_list(namearray, format, separray, etalstr)
-	if type(etalstr) == "string" then etalstr = U(etalstr) end
-	for i = 1, #separray do
-		if type(separray[i]) == "string" then separray[i] = U(separray[i]) end
-	end
-	if #separray == 0 then separray = {U", "} end
-	if type(format) == "string" then format = U(format) end
+	if #separray == 0 then separray = {", "} end
 	
-	local r = U""
+	local r = ""
 	for i = 1, #namearray do
-		local name
-		if type(namearray[i]) == "string" then name = U(namearray[i])
-		else name = namearray[i] end
+		local name = namearray[i]
 		if name ~= "others" then
 			if type(format) == "function" then
 				name = format(name,i,#namearray)
@@ -439,9 +414,9 @@ function LBibTeX.make_name_list(namearray, format, separray, etalstr)
 				name = LBibTeX.format_name(name,format)
 			end
 		end
-		if i == #namearray and name == U"others" and etalstr ~= nil then
+		if i == #namearray and name == "others" and etalstr ~= nil then
 			name = etalstr
-			separray[#separray] = U""
+			separray[#separray] = ""
 		end
 		
 		if i ~= 1 then
@@ -458,7 +433,7 @@ end
 
 -- とりあえず適当な実装
 function LBibTeX.remove_TeX_cs(s)
-	return s:gsub(U"\\[a-zA-Z]+",U""):gsub(U"\\.",U""):gsub(U"[{}]",U"")
+	return s:gsub("\\[a-zA-Z]+",""):gsub("\\.",""):gsub("[{}]","")
 end
 
 local default_required = {}
@@ -484,7 +459,6 @@ function LBibTeX.citation_check(citations,required)
 	r = {}
 	for dummy,v in pairs(citations) do
 		local tocheck = required[v.type]
-		if tocheck == nil then tocheck = required[U.encode(v.type)] end
 		if tocheck ~= nil then
 			for i = 1,#tocheck.required do
 				local req = tocheck.required[i]
@@ -498,7 +472,6 @@ function LBibTeX.citation_check(citations,required)
 					local req_clone = {}
 					for j = 1,#req do
 						local r = req[j]
-						if type(r) == "string" then r = U(r) end
 						table.insert(req_clone,r)
 					end
 					table.insert(r[v.key],req_clone)
@@ -511,17 +484,17 @@ end
 
 function LBibTeX.LBibTeX:output_citation_check(citation_check)
 	for k,v in pairs(citation_check) do
-		local r = U"missing "
+		local r = "missing "
 		for i = 1,#v do
-			if i > 1 then r = r .. U", " end
-			if #v[i] > 1 then r = r .. U"(" end
+			if i > 1 then r = r .. ", " end
+			if #v[i] > 1 then r = r .. "(" end
 			r = r .. v[i][1]
 			for j = 2,#v[i] do
 				r = r .. " or " .. v[i][j]
 			end
-			if #v[i] > 1 then r = r .. U")" end
+			if #v[i] > 1 then r = r .. ")" end
 		end
-		r = r .. U" in " .. k
+		r = r .. " in " .. k
 		self:warning(r)
 	end
 end

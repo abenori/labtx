@@ -1,12 +1,10 @@
 require "lbt-core"
-local icu = require "lbt-string"
-local U = icu.ustring
 
 LBibTeX.CrossReference = {}
 LBibTeX.CrossReference.all_type = {}
 
 function LBibTeX.CrossReference.new()
-	local obj = {reference_key_name = U"crossref",override = false,inherit = {}, except = {},all = true,mincrossrefs=1}
+	local obj = {reference_key_name = "crossref",override = false,inherit = {}, except = {},all = true,mincrossrefs=1}
 	return setmetatable(obj,{__index = LBibTeX.CrossReference})
 end
 
@@ -32,9 +30,6 @@ end
 local function modify_tableindex(index)
 	if index == LBibTeX.CrossReference.all_type then return {index} end
 	if type(index) ~= "table" then index = {index} end
-	for i = 1,#index do
-		if type(index[i]) == "string" then index[i] = U(index[i]) end
-	end
 	return index
 end
 
@@ -55,9 +50,9 @@ local function add_to_table_of_CrossReference(table,source_type,target_type,sour
 --	for stk,stv in pairs(table) do
 --		for ttk,ttv in pairs(stv) do
 --			for skk,skv in pairs(ttv) do
---				print(U(tostring(stk)) .. U":" .. ttk .. U":" .. skk)
+--				print((tostring(stk)) .. ":" .. ttk .. ":" .. skk)
 --				for i = 1,#skv do
---					print(U"  " .. skv[i])
+--					print("  " .. skv[i])
 --				end
 --			end
 --		end
@@ -112,8 +107,18 @@ local function table_include(array,val)
 	return false
 end
 
-function LBibTeX.CrossReference:modify_citations(cites,db)
-	if type(self.reference_key_name) == "string" then self.reference_key_name = U(self.reference_key_name) end
+function LBibTeX.CrossReference:modify_citations(cites,db,num)
+return cites
+--	local i = 0
+--	while num == nil or i < num do
+--		local cites_num = #cites
+--		cites = self:modify_citations_sub(cites,db)
+--		if #cites == cites_num then break end
+--		i = i + 1
+--	end
+end
+
+function LBibTeX.CrossReference:modify_citations_sub(cites,db)
 	local referred_table = {}
 	local referred_num = {}
 	for i = 1,#cites do

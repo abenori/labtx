@@ -1,13 +1,7 @@
 require "lbt-core"
-local icu = require "lbt-string"
-local U = icu.ustring
-
-function U:toustring()
-	return self
-end
 
 local function addperiod(s)
-	if s:find(U"%.[ ~]*$") == nil then return s .. U"."
+	if s:find("%.[ ~]*$") == nil then return s .. "."
 	else return s end
 end
 
@@ -18,9 +12,9 @@ function LBibTeX.bibitem.new(ref,label)
 end
 
 function LBibTeX.bibitem:toustring()
-	local r = U"\\bibitem"
-	if self.label ~= nil then r = r .. U"[" .. self.label .. U"]" end
-	return r .. U"{" .. self.ref .. U"}"
+	local r = "\\bibitem"
+	if self.label ~= nil then r = r .. "[" .. self.label .. "]" end
+	return r .. "{" .. self.ref .. "}"
 end
 
 function LBibTeX.bibitem:tostring()
@@ -29,11 +23,9 @@ end
 
 LBibTeX.block = {}
 function LBibTeX.block.new(sep, las, c)
-	if type(sep) == "string" then sep = U(sep) end
-	if type(las) == "string" then las = U(las) end
 	local obj = {defaultseparator = sep, last = las, contents = c, separators={}}
-	if obj.defaultseparator == nil then obj.defaultseparator = U"" end
-	if obj.last == nil then obj.last = U"" end
+	if obj.defaultseparator == nil then obj.defaultseparator = "" end
+	if obj.last == nil then obj.last = "" end
 	if obj.contents == nil then obj.contents = {} end
 	return setmetatable(obj,{__index = LBibTeX.block, __tostring = LBibTeX.block.tostring});
 end
@@ -57,29 +49,26 @@ function LBibTeX.block:tostring()
 end
 
 function LBibTeX.block:toustring()
-	local r = U""
+	local r = ""
 	for i = 1,#self.contents do
 		local sep
 		if self.separators[i] == nil then sep = self.defaultseparator
 		else sep = self.separators[i] end
-		if sep.toustring ~= nil then sep = sep:toustring()
-		elseif type(sep) == "string" then sep = U(sep)
-		end
+		sep = tostring(sep);
 		local periodfirst = false
-		if sep ~= U"" then
-			if sep:sub(1,1) == U"." then
+		if sep ~= "" then
+			if sep:sub(1,1) == "." then
 				periodfirst = true
 				sep = sep:sub(2)
-			elseif sep:sub(1,1) == U"\\" then
+			elseif sep:sub(1,1) == "\\" then
 				sep = sep:sub(2)
 			end
 		end
 		local c = self.contents[i]
 		local s
-		if c.toustring ~= nil then s = c:toustring()
-		else s = U(tostring(c)) end
-		if s ~= U"" then
-			if r == U"" then
+		s = tostring(c)
+		if s ~= "" then
+			if r == "" then
 				r = s
 			else
 				if periodfirst then
@@ -90,8 +79,8 @@ function LBibTeX.block:toustring()
 			end
 		end
 	end
-	if r == U"" then return U"" end
-	if self.last:sub(1,1) == U"." then
+	if r == "" then return "" end
+	if self.last:sub(1,1) == "." then
 		r = addperiod(r) .. self.last:sub(2)
 	else
 		r = r .. self.last
