@@ -3,7 +3,7 @@
 BibTeX by Lua.
 
 ## Install
-Of course, you need TeX distribution. (TeXLive is recommended.)
+Of course, you need a TeX distribution. (TeXLive is recommended.)
 Put *.lua at the directory where kpathsea can find the files. For example, under $TEXMF/scripts/lbibtex .
 
 ## Usage

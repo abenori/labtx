@@ -257,8 +257,8 @@ function LBibTeX.get_name_parts(name)
 		if comma2 == nil then
 		-- 2. von Last, First
 			first = InsertFromseparray(array,separray,comma1 + 1,#array)
-		-- 3. von Last, Jr, First
 		else
+		-- 3. von Last, Jr, First
 			jr = InsertFromseparray(array,separray,comma1 + 1, comma2)
 			first = InsertFromseparray(array,separray,comma2 + 1,#array)
 		end

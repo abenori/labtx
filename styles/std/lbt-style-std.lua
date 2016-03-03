@@ -217,23 +217,23 @@ std_styles.Template.Templates["techreport"] = "[$<author>:$<title>:[$<tr_number>
 std_styles.Template.Templates["unpublished"] = "[$<author>:$<title>:[$<note>:$<date>]]"
 std_styles.Template.Templates[""] = std_styles.Template.Templates["misc"]
 
-std_styles.Template.Formatter = {}
-std_styles.Template.Formatter.date = "<<|$<month>| >|$<year>|>"
+std_styles.Template.Formatters = {}
+std_styles.Template.Formatters.date = "<<|$<month>| >|$<year>|>"
 
-function std_styles.Template.Formatter:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
+function std_styles.Template.Formatters:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
 
-function std_styles.Template.Formatter:format_names(names)
+function std_styles.Template.Formatters:format_names(names)
 	local a = LBibTeX.split_names(names)
 	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
 	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
-function std_styles.Template.Formatter:author(c)
+function std_styles.Template.Formatters:author(c)
 	if c.fields["author"] == nil then return nil
 	else return self:format_names(c.fields["author"]) end
 end
 
-function std_styles.Template.Formatter:volume_number_pages(c)
+function std_styles.Template.Formatters:volume_number_pages(c)
 	local v = c.fields["volume"]
 	if v == nil then v = "" end
 	local n = c.fields["number"]
@@ -246,7 +246,7 @@ function std_styles.Template.Formatter:volume_number_pages(c)
 	return v .. n .. p
 end
 
-function std_styles.Template.Formatter:editor(c)
+function std_styles.Template.Formatters:editor(c)
 	if c.fields["editor"] == nil then return nil end
 	local a = LBibTeX.split_names(c.fields["editor"])
 	local r = self:format_names(c.fields["editor"]) .. ", editor"
@@ -254,17 +254,17 @@ function std_styles.Template.Formatter:editor(c)
 	return r
 end
 
-function std_styles.Template.Formatter:title(c)
+function std_styles.Template.Formatters:title(c)
 	if c.fields["title"] == nil then return nil
 	else return LBibTeX.change_case(c.fields["title"],"t") end
 end
 
-function std_styles.Template.Formatter:btitle(c)
+function std_styles.Template.Formatters:btitle(c)
 	if c.fields["title"] == nil then return nil
 	else return "{\\em " .. c.fields["title"] .. "}" end
 end
 
-function std_styles.Template.Formatter:journal(c)
+function std_styles.Template.Formatters:journal(c)
 	if c.fields["journal"] == nil then return nil
 	else return "{\\em " .. c.fields["journal"] .. "}" end
 end
@@ -274,12 +274,12 @@ local function tie_or_space(x)
 	else return " " .. x end
 end
 
-function std_styles.Template.Formatter:edition(c)
+function std_styles.Template.Formatters:edition(c)
 	if c.fields["edition"] == nil then return nil
 	else return LBibTeX.change_case(c.fields["edition"],"l") .. " edition" end
 end
 
-function std_styles.Template.Formatter:organization_if_editor_publisher(c)
+function std_styles.Template.Formatters:organization_if_editor_publisher(c)
 	local r = nil
 	if c.fields["editor"] ~= nil then r = c.fields["organization"] end
 	if r == nil then r = "" end
@@ -290,7 +290,7 @@ function std_styles.Template.Formatter:organization_if_editor_publisher(c)
 	return r
 end
 
-function std_styles.Template.Formatter:pages(c)
+function std_styles.Template.Formatters:pages(c)
 	local p = c.fields["pages"]
 	if p ~= nil then
 		if p:find("[-,+]") == nil then return "page" .. tie_or_space(p)
@@ -298,22 +298,22 @@ function std_styles.Template.Formatter:pages(c)
 	else return nil end
 end
 
-function std_styles.Template.Formatter:book_volume(c)
+function std_styles.Template.Formatters:book_volume(c)
 	if c.fields["volume"] == nil then return nil end
 	local r = "volume" .. tie_or_space(c.fields["volume"])
 	if c.fields["series"] ~= nil then r = r .. " of {\\em " .. c.fields["series"] .. "}" end
 	return r
 end
 
-function std_styles.Template.Formatter:number_if_not_volume(c)
+function std_styles.Template.Formatters:number_if_not_volume(c)
 	if c.fields["volume"] == nil and c.fields["number"] ~= nil then return tie_or_space(c.fields["number"]) end
 end
 
-function std_styles.Template.Formatter:series_if_not_volume(c)
+function std_styles.Template.Formatters:series_if_not_volume(c)
 	if c.fields["volume"] == nil and c.fields["series"] ~= nil then return c.fields["series"] end
 end
 
-function std_styles.Template.Formatter:chapter_pages(c)
+function std_styles.Template.Formatters:chapter_pages(c)
 	if c.fields["chapter"] == nil then return self:pages(c) end
 	local r = ""
 	if c.fields["type"] == nil then r = "chapter"
@@ -323,22 +323,22 @@ function std_styles.Template.Formatter:chapter_pages(c)
 	return r
 end
 
-function std_styles.Template.Formatter:proceedings_organization_publisher(c)
+function std_styles.Template.Formatters:proceedings_organization_publisher(c)
 	if c.fields["editor"] == nil then return c.fields["publisher"]
 	else return c.fields["organization"] end
 end
 
-function std_styles.Template.Formatter:master_thesis_type(c)
+function std_styles.Template.Formatters:master_thesis_type(c)
 	if c.fields["type"] == nil then return "Master's thesis"
 	else return LBibTeX.change_case(c.fields["type"],"t") end
 end
 
-function std_styles.Template.Formatter:phd_thesis_type(c)
+function std_styles.Template.Formatters:phd_thesis_type(c)
 	if c.fields["type"] == nil then return "PhD thesis"
 	else return LBibTeX.change_case(c.fields["type"],"t") end
 end
 
-function std_styles.Template.Formatter:tr_number(c)
+function std_styles.Template.Formatters:tr_number(c)
 	local r = c.fields["type"]
 	if r == nil then r = "Technical Report" end
 	if c.fields["number"] == nil then r = LBibTeX.change_case(r,"t")
@@ -346,11 +346,11 @@ function std_styles.Template.Formatter:tr_number(c)
 	return r
 end
 
-function std_styles.Template.Formatter:date_if_address(c)
+function std_styles.Template.Formatters:date_if_address(c)
 	if c.fields["address"] ~= nil then return self:date(c) end
 end
 
-function std_styles.Template.Formatter:date_if_not_address(c)
+function std_styles.Template.Formatters:date_if_not_address(c)
 	if c.fields["address"] == nil then return self:date(c) end
 end
 
@@ -363,16 +363,16 @@ std_styles.CrossReference.Templates["incollection"] = "[$<author>:$<title>:[$<in
 std_styles.CrossReference.Templates["inproceedings"] = "[$<author>:$<title>:[$<incollection_crossref> \\cite{$<crossref>}:$<chapter_pages>]:$<note>]"
 std_styles.CrossReference.Templates["conference"] = std_styles.CrossReference.Templates["inproceedings"]
 
-function std_styles.Template.Formatter:crossref(c)
+function std_styles.Template.Formatters:crossref(c)
 	return c.fields["crossref"]:lower()
 end
 
-function std_styles.Template.Formatter:journal_crossref(c)
+function std_styles.Template.Formatters:journal_crossref(c)
 	if c.fields["journal"] == nil then return nil
 	else return "{\\em " .. c.fields["journal"] .. "\\/}" end
 end
 
-function std_styles.Template.Formatter:book_crossref(c)
+function std_styles.Template.Formatters:book_crossref(c)
 	r = ""
 	if c.fields["volume"] == nil then r = "In "
 	else r = "Volume" .. tie_or_space(c.fields["volume"]) .. " of " end
@@ -384,7 +384,7 @@ function std_styles.Template.Formatter:book_crossref(c)
 	return r
 end
 
-function std_styles.Template.Formatter:editor_crossref(c)
+function std_styles.Template.Formatters:editor_crossref(c)
 	local r = ""
 	local a = LBibTeX.split_names(c.fields["editor"])
 	r = r .. LBibTeX.format_name(a[1],"{vv~}{ll}")
@@ -393,7 +393,7 @@ function std_styles.Template.Formatter:editor_crossref(c)
 	return r
 end
 
-function std_styles.Template.Formatter:incollection_crossref(c)
+function std_styles.Template.Formatters:incollection_crossref(c)
 	local r = ""
 	if c.fields["editor"] ~= nil and c.fields["editor"] == c.fields["author"] then
 		return "In " .. self:editor_crossref(c)

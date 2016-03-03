@@ -1,5 +1,5 @@
 local start_time = os.clock()
-kpse.set_program_name("pbibtex")
+kpse.set_program_name("bibtex")
 require "lbt-core"
 
 local f = arg[1]
@@ -34,5 +34,5 @@ function style_file_exec()
 end
 xpcall(style_file_exec,function(e) print(debug.traceback(tostring(e))) os.exit(2) end)
 BibTeX:dispose()
-print("total time: " .. (os.clock() - start_time))
+print("total time: " .. tostring(os.clock() - start_time) .. " sec")
 

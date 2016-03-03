@@ -179,7 +179,7 @@ local function get_preamble(line,buf,endbra)
 				end
 			end
 			if q == nil then
-				rv = rv .. line
+				rv = rv .. line .. "\n"
 				break
 			end
 			k = line:sub(q,q)
@@ -247,7 +247,7 @@ local function read_database(file)
 			local key = trim(field)
 			if type == "string" then
 				local k,v = getkeyval(field)
-				if k ~= "" then macros[k:lower()] = del_dquote_bracket(v) print("macros found:" .. k .. " = " .. macros[k:lower()]) end
+				if k ~= "" then macros[k:lower()] = del_dquote_bracket(v) end
 				while s == "," do
 					field,s,line = get_entry(line,buf,endbra)
 					if field == nil then return nil,"searching entry.. " .. s end
@@ -320,12 +320,12 @@ function LBibTeX.Database:add_db(cite)
 	self.db[key] = cite
 end
 
-function LBibTeX.Database:read(db)
+function LBibTeX.Database:read(file)
 	-- load databse
-	local c,p,m = read_database(db);
+	local c,p,m = read_database(file);
 	if c == nil then return false end
 	self.preamble = self.preamble .. p
-	self.macros_from_db[db] = m
+	self.macros_from_db[file] = m
 	for k,v in pairs(c) do
 		self:add_db(v)
 	end
@@ -337,17 +337,6 @@ function LBibTeX.Database:apply_macro_to_str(str,bib)
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
 		table.insert(macros,self.macros_from_db[bib])
 	end
---	for k,v in pairs(macros) do
---		for kk,vv in pairs(v) do
---		if type(vv) == "table" then 
---			print("vv is table")
---			for kkk,vvv in pairs(vv) do print("macros: " .. kkk .. " = " .. vvv) end
---			print("vv end");
---		else print("macros: " .. kk .. " = " .. vv) end
---		end
---	end
---	print("from: " .. str)
---	print("to: " .. apply_macro_to_str(str,macros));
 	return apply_macro_to_str(str,macros)
 end
 

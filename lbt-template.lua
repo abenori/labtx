@@ -181,11 +181,12 @@ function LBibTeX.Template:MakeStringFunction(array,funcs,bocknest)
 	if f1 == nil or f2 == nil or f3 == nil then return nil end
 	return function(c)
 		local x = ""
-		for i = 1,#f2(c) do
-			x = x .. f2(c)[i]
+		local t2 = f2(c)
+		for i = 1,#t2 do
+			x = x .. t2[i]
 		end
-		if not isempty(f2(c)) then
-			return table_connect(table_connect(f1(c),f2(c)),f3(c))
+		if not isempty(t2) then
+			return table_connect(table_connect(f1(c),t2),f3(c))
 		else
 			return {""}
 		end
@@ -201,8 +202,7 @@ function LBibTeX.Template:MakeFormatFunction(array,funcs)
 			ff[i] = function(f,c)
 				local r = c.fields[array[i]]
 				if r == nil then return nil
-				elseif r.toustring ~= nil then return r:toustring()
-				else return r end
+				else return tostring(r) end
 			end
 		elseif type(f) ~= "function" then
 			return nil
@@ -238,7 +238,7 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 		-- [A:B:...]
 		local array,r = GetArrayOfBlocks(templ,"[","]",":",bra + 1)
 		if r == nil then ------------------ syntax error
-			LBibTeX.Template.LastMsg = "template error found in " .. templ
+			LBibTeX.Template.LastMsg = "template error in " .. templ
 			return nil
 		end
 		local f1 = self:MakeBlockFunction(array,funcs,blocknest)
@@ -255,11 +255,11 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 			-- <A|B|C>
 			local array,r = GetArrayOfBlocks(templ,"<",">","|",bra + 1)
 			if r == nil then ------------------ syntax error
-				LBibTeX.Template.LastMsg = "template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error in " .. templ
 				return nil
 			end
 			if #array ~= 3 then ------------------ syntax error
-				LBibTeX.Template.LastMsg = "template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error in " .. templ
 				return nil
 			end
 			local f1 = self:MakeStringFunction(array,funcs,blocknest)
@@ -270,7 +270,7 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 			-- $<A|B|...>
 			local array,r = GetArrayOfBlocks(templ,"<",">","|",bra + 1)
 			if r == nil then ------------------ syntax error
-				LBibTeX.Template.LastMsg = "template error found in " .. templ
+				LBibTeX.Template.LastMsg = "template error in " .. templ
 				return nil
 			end
 			local f1 = self:MakeFormatFunction(array,funcs)
@@ -301,14 +301,14 @@ function LBibTeX.Template:modify_functions(funcs)
 		funcs = ff
 		ff = {}
 	end
-	local r = {}
-	for k,v in pairs(ff) do
-		r[k] = v
-	end
-	for k,v in pairs(r) do
-		ff[k] = v
-	end
 	return ff
+--	local r = {}
+--	for k,v in pairs(ff) do
+--		r[k] = v
+--	end
+--	for k,v in pairs(r) do
+--		ff[k] = v
+--	end
 end
 
 function LBibTeX.Template:make_from_str(templ,funcs)

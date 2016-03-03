@@ -3,177 +3,203 @@ require "lbt-core"
 LBibTeX.CrossReference = {}
 LBibTeX.CrossReference.all_type = {}
 
+--[[
+reference_key_name, override, all, mincrossrefs
+
+CrossReference.inherit["article"]["book"] = {
+{"title","booktitle"},
+{{"author","editor"},"editor},
+{"A",{"B","C"}}
+}
+... みたいにしてみよう．
+
+CrossReference.all["article"]["book"] = true
+CrossReference.override["article"]["book"] = {
+	{"title","booktitle",true}
+	{"author","editor",false}
+]]
+
 function LBibTeX.CrossReference.new()
-	local obj = {reference_key_name = "crossref",override = false,inherit = {}, except = {},all = true,mincrossrefs=1}
+	local obj = {reference_key_name = "crossref",override = {},inherit = {},all = {},mincrossrefs=1}
+	local function no_return_nil(table,key)
+		local x = rawget(table,key)
+		if x == nil then
+			local t = {}
+			rawset(table,key,t)
+			return t
+		else return x
+		end
+	end
+	setmetatable(obj.inherit,{__index = no_return_nil})
+	setmetatable(obj.override,{__index = no_return_nil})
+	setmetatable(obj.all,{__index = no_return_nil})
+	obj.override[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type] = {
+		{LBibTeX.CrossReference.all_type,LBibTeX.CrossReference.all_type,false}
+	}
+	obj.all[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type] = true
 	return setmetatable(obj,{__index = LBibTeX.CrossReference})
 end
 
-local function array_add(a,b)
+-- table[source_type][target_type][source_key] = {target_keyの配列}という形にしておく．
+local function modify_table(oldtable)
+	local table = {}
+	for source_type,v in pairs(oldtable) do
+		if type(source_type) == "string" then source_type = source_type:lower() end
+		table[source_type] = {}
+		for target_type,v in pairs(v) do
+			if type(target_type) == "string" then target_type = target_type:lower() end
+			table[source_type][target_type] = {}
+			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
+			for i,array in ipairs(v) do
+				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
+				local source_keys = array[1]
+				local target_keys = array[2]
+				if type(source_keys) ~= "table" then source_keys = {source_keys} end
+				if type(target_keys) ~= "table" then target_keys = {target_keys} end
+				local extra = nil
+--				if #array > 2 then extra = table.unpack(array,3) end
+				if #array > 2 then extra = {array[3]} end
+				for i,from in ipairs(source_keys) do
+					from = from:tolower()
+					if table[source_type][source_type][from] == nil then
+						table[source_type][source_type][from] = {}
+					end
+					for j,to in pairs(target_keys) do
+						to = to:lower()
+						if extra ~= nil then 
+							to = {to}
+							for n,ext in ipairs(extra) do table.insert(to,ext) end
+						end
+						table.insert(table[source_type][source_type][from],to)
+					end
+				end
+			end
+		end
+	end
+	return table
+end
+
+-- aとbを結合し，ダブリを排除した結果を返す．
+-- aは破壊される可能性がある
+local function concat_array(a,b)
 	if a == nil then return b end
 	if b == nil then return a end
 	for i = 1,#b do
 		table.insert(a,b[i])
 	end
-	table.sort(a)
-	local numb = #a
-	local n = 1
-	for i = 2,#a do
-		if a[i] ~= a[i - 1] then 
-			n = n + 1
-			a[n] = a[i]
-		end
-	end
-	for i = n + 1,numb do table.remove(a) end
 	return a
 end
 
-local function modify_tableindex(index)
-	if index == LBibTeX.CrossReference.all_type then return {index} end
-	if type(index) ~= "table" then index = {index} end
-	return index
-end
-
-local function add_to_table_of_CrossReference(table,source_type,target_type,source_key,target_key)
-	source_type = modify_tableindex(source_type)
-	target_type = modify_tableindex(target_type)
-	source_key  = modify_tableindex(source_key )
-	target_key  = modify_tableindex(target_key )
-	for i = 1,#source_type do
-		for j = 1,#target_type do
-			for k = 1,#source_key do
-				if table[source_type[i]] == nil then table[source_type[i]] = {} end
-				if table[source_type[i]][target_type[j]] == nil then table[source_type[i]][target_type[j]] = {} end
-				table[source_type[i]][target_type[j]][source_key[k]] = array_add(table[source_type[i]][target_type[j]][source_key[k]],target_key)
+-- 各々のtable1[k]とtable2[k]を結合する（どちらも配列が入っているとする）
+local function concat_array_in_table(table1,table2)
+	if table1 == nil and table2 == nil then return {} end
+	if table1 == nil then return table2 end
+	if table2 == nil then return table1 end
+	local t = {}
+	for k,v in pairs(table1) do
+		t[k] = {}
+		for i,x in ipairs(v) do
+			t[k][i] = x
+		end
+	end
+	for k,v in pairs(table2) do
+		if t[k] == nil then
+			t[k] = {}
+			for i,x in ipairs(v) do
+				t[k][i] = x
+			end
+		else
+			for i,x in ipairs(v) do
+				table.insert(t[k],x)
 			end
 		end
 	end
---	for stk,stv in pairs(table) do
---		for ttk,ttv in pairs(stv) do
---			for skk,skv in pairs(ttv) do
---				print((tostring(stk)) .. ":" .. ttk .. ":" .. skk)
---				for i = 1,#skv do
---					print("  " .. skv[i])
---				end
---			end
---		end
---	end
-	
-	return table
+	return t
 end
 
-function LBibTeX.CrossReference:add_inherit(source_type,target_type,source_key,target_key)
-	self.inherit = add_to_table_of_CrossReference(self.inherit,source_type,target_type,source_key,target_key)
-end
-
-function LBibTeX.CrossReference:add_except(source_type,target_type,source_key,target_key)
-	self.except = add_to_table_of_CrossReference(self.except,source_type,target_type,source_key,target_key)
-end
-
-local function table_clone(table)
-	r = {}
-	for k,v in pairs(table) do r[k] = v end
-	return r
-end
-
-local function inherit_array_add(table1,table2)
-	if table1 == nil then return table2 end
-	if table2 == nil then return table1 end
-	table1 = table_clone(table1)
-	for k,v in table1 do
-		table1[k] = array_add(table1[k],table2[k])
-	end
-	return table1
-end
-
+-- all_typeもあわせた配列を作る．
 local function get_fields(table,source_type,target_type)
 	local src_type_table
 	if table[source_type] ~= nil then
-		src_type_table = inherit_array_add(table[source_type][target_type],
+		src_type_table = concat_array_in_table(table[source_type][target_type],
 				table[source_type][LBibTeX.CrossReference.all_type])
 	end
 	local all_type_table
 	if table[LBibTeX.CrossReference.all_type] ~= nil then
-		all_type_table = inherit_array_add(table[LBibTeX.CrossReference.all_type][target_type],
+		all_type_table = concat_array_in_table(table[LBibTeX.CrossReference.all_type][target_type],
 				table[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type])
 	end
-	return inherit_array_add(src_type_table,all_type_table)
+	return concat_array_in_table(src_type_table,all_type_table)
 end
 
-local function table_include(array,val)
-	if array == nil then return false end
-	for k,v in pairs(array) do
-		if v == val then return true end
-	end
-	return false
-end
 
-function LBibTeX.CrossReference:modify_citations(cites,db,num)
-return cites
---	local i = 0
---	while num == nil or i < num do
---		local cites_num = #cites
---		cites = self:modify_citations_sub(cites,db)
---		if #cites == cites_num then break end
---		i = i + 1
---	end
-end
-
-function LBibTeX.CrossReference:modify_citations_sub(cites,db)
-	local referred_table = {}
-	local referred_num = {}
-	for i = 1,#cites do
-		local key = cites[i].fields[self.reference_key_name]
-		if key ~= nil then
-			key = key:lower()
-			local referred = db.db[key]
-			if referred == nil then
-				cites[i].fields[self.reference_key_name] = nil
+function LBibTeX.CrossReference:modify_citations(cites,db)
+--	local obj = {reference_key_name = "crossref",override = {},inherit = {}, except = {},all = {},mincrossrefs=1}
+	local inherit_table = modify_table(self.inherit)
+	local override_table = modify_table(self.override);
+	local reffered = {}
+	for i,cite in ipairs(cites) do
+		local key = cite.fields[self.reference_key_name]
+		if key ~= nil and db.db[key] ~= nil then
+			if reffered[key] == nil then
+				reffered[key] = {i}
 			else
-				if referred_table[key] == nil then
-					referred_table[key] = referred
-					referred_num[key] = 1
-				else
-					referred_num[key] = referred_num[key] + 1
-				end
-				local inherit = get_fields(self.inherit,referred.type,cites[i].type)
-				local except = get_fields(self.except,referred.type,cites[i].type)
-				local ruled_keys = {}
-				if inherit ~= nil then
-					for k,v in pairs(inherit) do
-						table.insert(ruled_keys,k)
-						ruled_keys = array_add(ruled_keys,v)
-					end
-				end
-				for k,v in pairs(referred.fields) do
-					local except_array
-					if except ~= nil then 
-						except_array = array_add(except[k],except[LBibTeX.CrossReference.all_type])
-					end
-					if not table_include(except_array,LBibTeX.CrossReference.all_type) then
-						if inherit ~= nil and inherit[k] ~= nil then
-							local array = array_add(inherit[k],inherit[LBibTeX.CrossReference.all_type])
-							for j = 1,#array do
-								if not table_include(except_array,array[j]) and (override or cites[i].fields[array[j]] == nil) then
-									cites[i].fields[array[j]] = referred.fields[k]
-								end
-							end
-						else
-							if self.all and (self.override or cites[i].fields[k] == nil) and (not table_include(ruled_keys,k) and not table_include(except_array,k)) then
-								cites[i].fields[k] = referred.fields[k]
-							end
-						end
-					end
-				end
+				table.insert(reffered[key],i)
 			end
 		end
 	end
-	for k,v in pairs(referred_table) do
-		if referred_num[k] >= self.mincrossrefs then
-			table.insert(cites,db.db[k])
+
+	local all_type = LBibTeX.CrossReference.all_type
+	for parent_key,child_keys in pairs(reffered) do
+		if #child_keys < self.mincrossrefs then goto continue end
+		local parent = db.db[parent_key]
+		for i,child_number in ipairs(child_keys) do
+			local child = cites[child_number]
+			local inherit = get_fields(inherit_table,parent.type,child.type)
+			local override = get_fields(override_table,parent.type,child.type)
+			
+			local allwrite = (self.all[all_type][all_type] == true or self.all[all_type][child.type] == true or self.all[parent.type][all_type] == true or self.all[parent.type][child.type] == true)
+			for key,value in pairs(parent.fields) do
+				local target_field_keys = inherit[key]
+				if target_field_keys == nil then target_field_keys = inherit[all_type] end
+				if target_field_keys == nil then
+					if allwrite == true then target_field_keys = {key}
+					else goto continue end
+				end
+				for dummy,target_field_key in ipairs(target_field_keys) do
+					print("CROSS: " .. target_field_key .. "=>" .. key)
+					local isoverride = nil
+					if child.fields[target_field_key] == nil then isoverride = true
+					-- override[key]の中身は{{"title",true},...}
+					elseif override[key] ~= nil then
+						for dummy,x in ipairs(override[key]) do
+							if x[0] == al_type or x[0] == target_field_key then 
+								isoverride = x[1]
+								break
+							end
+						end
+					elseif override[all_type] ~= nil then
+						for dummy,x in ipairs(override[all_type]) do
+							if x[0] == al_type or x[0] == target_field_key then 
+								isoverride = x[1]
+								break
+							end
+						end
+					end
+					if isoverride == nil then isoverride = false end
+					if isoverride == true then
+						child.fields[target_field_key] = parent.fields[key]
+					end
+				end
+				::continue::
+			end
 		end
+		table.insert(cites,parent)
+		::continue::
 	end
 	return cites
 end
+
 
 function LBibTeX.CrossReference:make_formatter(orig_formatter,crossref_formatter)
 	local f = {}

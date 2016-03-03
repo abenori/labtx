@@ -219,12 +219,9 @@ function LBibTeX.LBibTeX:outputline(s)
 	self.bbl:write(s .. "\n")
 end
 
-local emptystr = ""
-local trim_str1 = "^[ \n\t]*"
-local trim_str2 = "[ \n\t]*$"
 local function trim(str)
 --	return str:gsub("^[ \n\t]*(.-)[ \n\t]*$","%1")
-	return str:gsub(trim_str1,emptystr):gsub(trim_str2,emptystr)
+	return str:gsub("^[ \n\t]*",""):gsub("[ \n\t]*$","")
 end
 
 
@@ -233,11 +230,9 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 		local t = self.cites[i].type
 		if t ~= nil then
 			local f = formatter[t]
-			if f == nil then f = formatter[tostring(t)] end
 			if f == nil then
 				self:warning("no style is defined for " .. t)
 				f = formatter[""]
-				if f == nil then f = formatter[""] end
 				if f == nil then self:error("default style is not defined") end
 			else
 				local s = "\\bibitem"
@@ -251,7 +246,7 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 				s = f(self.cites[i])
 				s = tostring(s);
 				self:outputline(trim(s:gsub("  +"," ")))
-				self:outputline(emptystr)
+				self:outputline("")
 			end
 		end
 	end
@@ -261,16 +256,15 @@ function LBibTeX.LBibTeX:outputthebibliography(formatter)
 	local longest_label = self:get_longest_label()
 	if longest_label == nil then longest_label = tostring(#self.cites) end
 	self:outputline(self.preamble)
+	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)
 	self:outputline("\\end{thebibliography}")
 end
 
-local equal = "="
-
 -- key に = が入っていると失敗する．
 local function getkeyval(str)
-	local eq = str:find(equal)
+	local eq = str:find("=")
 	if eq == nil then return str,nil end
 	local key = trim(str:sub(1,eq-1))
 	local val = trim(str:sub(eq+1))
