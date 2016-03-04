@@ -1,38 +1,127 @@
 if LBibTeX == nil then LBibTeX = {} end
 
--- 個々の引用を表す
--- Citation.key, Citation.type, Citation.fields[], Citation.label
-LBibTeX.Citation = {}
-function LBibTeX.Citation.new()
-	local obj = {fields = {},type = "",key = "",bib = ""}
-	return setmetatable(obj,{__index = LBibTeX.Citation})
+LBibTeX.Database = {}
+
+--[[
+LBibTeX.Database
+  LBibTeX.Database.db: データベース
+  LBibTeX.Database.conversions: fieldを変換する関数
+  LBibTeX.Database.add_db(cites) citesは配列，各々にはkey,type,fields,extra_dataを定義しておく
+  
+Ciation (local)
+  key,type,fields[],extra_data[]にアクセスできる
+  Citation:clone()
+  Citation:add_field(key,val): keyにvalを追加
+  Citation:add_field(key,cite,key1): keyにcite.fields[key1]を追加
+  Citation:get_raw_field(key): conversionが作用されていない生データを取得
+
+LBibTeX.BibDatabase: LBibTeX.Databaseを継承
+  macros[**]でマクロが設定できる
+  LBibTeX.BibDatabase.read(file): fileを読む
+]]
+
+-- Citationクラス，key,type,fields[],extra_fields[],extra_data[]
+local Citation = {}
+
+local function fields_index(table,key)
+	meta = getmetatable(table)
+	local val = meta.__extra_fields[key]
+	if val == nil then val = meta.__real_fields[key] end
+	if val == nil then return nil end
+	if meta.__conversions == nil or #meta.__conversions == 0 then return val end
+	for i,conv in ipairs(meta.__conversions) do
+		val = conv(val,meta.__extra_data)
+	end
+	return val
+end
+	
+local function fields_enum(table,index)
+	meta = getmetatable(table)
+	local val,newindex
+	if index == nil or meta.__extra_fields[index] ~= nil then
+		newindex,val = next(meta.__extra_fields,index)
+	end
+	if newindex == nil then
+		if meta.__extra_fields[index] == nil then newindex = index end
+		repeat
+			newindex,val = next(meta.__real_fields,newindex)
+		until newindex == nil or meta.__extra_fields[newindex] == nil
+	end
+	if val == nil then return nil,nil end
+	for i,conv in ipairs(meta.__conversions) do
+		val = conv(val,meta.__extra_data)
+	end
+	return newindex,val
 end
 
-LBibTeX.Database = {} -- データベースを表す 一覧/マクロ
+local function fields_pairs(table)
+	return fields_enum,table,nil
+end
+
+
+function Citation.new(db,data)
+	local obj = {fields = {},key = data.key, type = data.type, extra_data = data.extra_data}
+	
+	local fields = data.fields
+	if fields == nil then fields = {} end
+	extra_fields = data.extra_fields
+	if extra_fields == nil then extra_fields = {} end
+--	if obj.extra_data == nil then obj.extra_data = {} end
+	setmetatable(obj.fields,{
+		__index = fields_index,
+		__real_fields = fields,
+		__extra_fields = extra_fields,
+		__conversions = db.conversions,
+		__pairs = fields_pairs,
+		__extra_data = obj.extra_data})
+	return setmetatable(obj,{__index = Citation})
+end
+
+function Citation:clone()
+	local meta = getmetatable(self)
+	local obj = {fields = {},key = self.key,type = self.type, extra_data = self.extra_data}
+	local extra_fields = {}
+	for k,v in meta.__extra_fields do extra_fields[k] = v end
+	setmetatable(obj.fields,{
+		__index = fields_index,
+		__real_fields = meta.__real_fields,
+		__extra_fields = extra_fields,
+		__conversions = meta.conversions,
+		__pairs = fields_pairs,
+		__extra_data = obj.extra_data})
+	return setmetatable(obj,{__index = Citation})
+end
+
+-- add_field(key,val)でkeyにvalを入れる
+-- add_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
+function Citation:add_field(key,a,b)
+	local meta = getmetatable(self.fields)
+	if b == nil then
+		meta.__extra_fields[key] = a
+	else
+		meta.__extra_fields[key] = a:get_raw_field(b)		
+	end
+end
+
+function Citation:get_raw_field(key)
+	local meta = getmetatable(self.fields)
+	local val = meta.__extra_fields[key]
+	if val == nil then val = meta.__real_fields[key] end
+	return val
+end
+
 function LBibTeX.Database.new()
-	local obj = {preamble = "", macros_from_db = {}, db = {}, macros = {}, converter = {}};
+	local obj = {db = {},conversions = {}}
 	return setmetatable(obj,{__index = LBibTeX.Database})
 end
 
--- ファイル読み込み用ラッパ
-local buffer = {}
-function buffer.new(file,enc)
-	if enc == nil then enc = "UTF-8" end
-	local f,m = io.open(file,"r",enc)
-	if f == nil then return nil end
-	obj = {fp = f,linenum = 0}
-	return setmetatable(obj,{__index = buffer})
+function LBibTeX.Database:add_db(datas)
+	for k,v in pairs(datas) do
+		self.db[v.key] = Citation.new(self,v)
+	end
 end
 
-function buffer:read()
-	self.linenum = self.linenum + 1
-	return self.fp:read()
-end
-
-function buffer:close()
-	return self.fp:close()
-end
-
+-- LBibTeX.BibDatabase
 -- ヘルパ関数
 local function split_strings_nonestsep(str,sep)
 	local a = {}
@@ -94,6 +183,24 @@ local function apply_macro_to_str(str,macros)
 	return trim(r)
 end
 
+-- ファイル読み込み用ラッパ
+local buffer = {}
+function buffer.new(file,enc)
+	if enc == nil then enc = "UTF-8" end
+	local f,m = io.open(file,"r",enc)
+	if f == nil then return nil end
+	obj = {fp = f,linenum = 0}
+	return setmetatable(obj,{__index = buffer})
+end
+
+function buffer:read()
+	self.linenum = self.linenum + 1
+	return self.fp:read()
+end
+
+function buffer:close()
+	return self.fp:close()
+end
 
 -- データベース読み込み用の関数たち
 
@@ -255,7 +362,9 @@ local function read_database(file)
 					if k ~= "" then macros[k:lower()] = del_dquote_bracket(v) end
 				end
 			else
-				c = LBibTeX.Citation.new()
+				c = {}
+				c.fields = {}
+				c.extra_data = {}
 				local s,field
 				repeat
 					field,s,line = get_entry(line,buf,endbra)
@@ -265,7 +374,6 @@ local function read_database(file)
 				until s ~= ","
 				c.type = type
 				c.key = key
-				c.bib = file
 				db[key] = c
 			end
 		end
@@ -273,66 +381,11 @@ local function read_database(file)
 	return db,preamble,macros
 end
 
-local function Database_fields__index(table, key)
-	local meta = getmetatable(table)
-	local conv = meta.__parent_database.converter[key]
-	if conv ~= nil then
-		local d = {}
-		for v,k in pairs(meta.__data) do
-			d[v] = k
-		end
-		d.fields = meta.__real_fields
-		return conv(d)
-	else
-		local x = rawget(meta.__real_fields,key)
-		if x == nil then return nil end
-		return meta.__parent_database:apply_macro_to_str(x,meta.__data.bib)
-	end
-end
 
-local function Database_fields__next(table,index)
-	local meta = getmetatable(table)
-	local a,b = next(meta.__real_fields,index)
-	if b == nil then return a,b
-	else
-		local conv = meta.__parent_database.converter[a]
-		if conv ~= nil then
-			local d = {}
-			for v,k in pairs(meta.__data) do
-				d[v] = k
-			end
-			d.fields = meta.__real_fields
-			return a,conv(d)
-		end
-		return a,meta.__parent_database:apply_macro_to_str(b,meta.__data.bib)
-	end
-end
+LBibTeX.BibDatabase = {}
+setmetatable(LBibTeX.BibDatabase,{__index = LBibTeX.Database})
 
-local function Database_fields__pairs(t)
-	return Database_fields__next,t,nil
-end
-
-function LBibTeX.Database:add_db(cite)
-	local real_fields = cite.fields
-	local key = cite.key
-	cite.fields = {}
-	setmetatable(cite.fields,{__index = Database_fields__index,__real_fields = real_fields,__parent_database = self, __data = cite,__pairs = Database_fields__pairs});
-	self.db[key] = cite
-end
-
-function LBibTeX.Database:read(file)
-	-- load databse
-	local c,p,m = read_database(file);
-	if c == nil then return false end
-	self.preamble = self.preamble .. p
-	self.macros_from_db[file] = m
-	for k,v in pairs(c) do
-		self:add_db(v)
-	end
-	return true
-end
-
-function LBibTeX.Database:apply_macro_to_str(str,bib)
+function LBibTeX.BibDatabase:apply_macro_to_str(str,bib)
 	local macros = {self.macros}
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
 		table.insert(macros,self.macros_from_db[bib])
@@ -340,9 +393,26 @@ function LBibTeX.Database:apply_macro_to_str(str,bib)
 	return apply_macro_to_str(str,macros)
 end
 
-function LBibTeX.Database:apply_macro(data,key)
-	local meta = getmetatable(data.fields)
-	if meta ~= nil and meta.__real_fields ~= nil then return self:apply_macro_to_str(rawget(meta.__real_fields,key),data.bib) end
-	return self:apply_macro_to_str(data.fields[key],data.bib)
+function LBibTeX.BibDatabase.new()
+	local obj = LBibTeX.Database.new()
+	obj.macros = {}
+	obj.macros_from_db = {}
+	obj.preamble = ""
+	local conv = function(val,data) return LBibTeX.BibDatabase.apply_macro_to_str(obj,val,data.bib) end
+	table.insert(obj.conversions,conv)
+	return setmetatable(obj,{__index = LBibTeX.BibDatabase})
+end
+
+function LBibTeX.BibDatabase:read(file)
+	-- load databse
+	local c,p,m = read_database(file);
+	if c == nil then return false end
+	self.preamble = self.preamble .. p
+	self.macros_from_db[file] = m
+	for k,v in pairs(c) do
+		v.extra_data.bib = file
+	end
+	self:add_db(c)
+	return true
 end
 

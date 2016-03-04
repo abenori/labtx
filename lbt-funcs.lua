@@ -499,4 +499,44 @@ function LBibTeX.LBibTeX:output_citation_check(citation_check)
 	end
 end
 
+-- [from,to]をソートする．
+local function merge_sort(list,from,to,comp,tmplist)
+	if to - from > 1 then
+		local mid = math.floor((to + from)/2)
+		merge_sort(list,from,mid,comp,tmplist)
+		merge_sort(list,mid+1,to,comp,tmplist)
+		local left = from
+		local right = mid + 1
+		local i = 1
+		while left <= mid or right <= to do
+			if left > mid then
+				tmplist[i] = list[right]
+				right = right + 1
+			elseif right > to then
+				tmplist[i] = list[left]
+				left = left + 1
+			elseif comp(list[right],list[left]) == true then
+				tmplist[i] = list[right]
+				right = right + 1
+			else
+				tmplist[i] = list[left]
+				left = left + 1
+			end
+			i = i + 1
+		end
+		for i = from,to do
+			list[i] = tmplist[i - from + 1]
+		end
+	elseif to - from == 1 then
+		if comp(list[to],list[from]) then
+			list[to],list[from] = list[from],list[to]
+		end
+	end
+	return list
+end
 
+function LBibTeX.stable_sort(list,comp)
+	if comp == nil then comp = function(a,b) return a < b end end
+	local tmplist = {}
+	return merge_sort(list,1,#list,comp,tmplist)
+end

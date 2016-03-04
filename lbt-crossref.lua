@@ -1,7 +1,7 @@
 require "lbt-core"
 
 LBibTeX.CrossReference = {}
-LBibTeX.CrossReference.all_type = {}
+LBibTeX.CrossReference.all_type = "*"
 
 --[[
 reference_key_name, override, all, mincrossrefs
@@ -42,13 +42,13 @@ end
 
 -- table[source_type][target_type][source_key] = {target_keyの配列}という形にしておく．
 local function modify_table(oldtable)
-	local table = {}
+	local t = {}
 	for source_type,v in pairs(oldtable) do
 		if type(source_type) == "string" then source_type = source_type:lower() end
-		table[source_type] = {}
+		t[source_type] = {}
 		for target_type,v in pairs(v) do
 			if type(target_type) == "string" then target_type = target_type:lower() end
-			table[source_type][target_type] = {}
+			t[source_type][target_type] = {}
 			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
 			for i,array in ipairs(v) do
 				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
@@ -57,12 +57,11 @@ local function modify_table(oldtable)
 				if type(source_keys) ~= "table" then source_keys = {source_keys} end
 				if type(target_keys) ~= "table" then target_keys = {target_keys} end
 				local extra = nil
---				if #array > 2 then extra = table.unpack(array,3) end
-				if #array > 2 then extra = {array[3]} end
+				if #array > 2 then extra = {table.unpack(array,3)} end
 				for i,from in ipairs(source_keys) do
-					from = from:tolower()
-					if table[source_type][source_type][from] == nil then
-						table[source_type][source_type][from] = {}
+					if type(from) == "string" then from = from:lower() end
+					if t[source_type][source_type][from] == nil then
+						t[source_type][source_type][from] = {}
 					end
 					for j,to in pairs(target_keys) do
 						to = to:lower()
@@ -70,13 +69,13 @@ local function modify_table(oldtable)
 							to = {to}
 							for n,ext in ipairs(extra) do table.insert(to,ext) end
 						end
-						table.insert(table[source_type][source_type][from],to)
+						table.insert(t[source_type][source_type][from],to)
 					end
 				end
 			end
 		end
 	end
-	return table
+	return t
 end
 
 -- aとbを結合し，ダブリを排除した結果を返す．
@@ -135,8 +134,15 @@ end
 
 function LBibTeX.CrossReference:modify_citations(cites,db)
 --	local obj = {reference_key_name = "crossref",override = {},inherit = {}, except = {},all = {},mincrossrefs=1}
+	local all_type = LBibTeX.CrossReference.all_type
 	local inherit_table = modify_table(self.inherit)
-	local override_table = modify_table(self.override);
+	local override_table
+	if type(self.override) ~= "table" then 
+		override_table = {}
+		override_table[all_type] = {}
+		override_table[all_type][all_type] = {}
+		override_table[all_type][all_type][all_type] = {{all_type,self.override}}
+	else override_table = modify_table(self.override) end
 	local reffered = {}
 	for i,cite in ipairs(cites) do
 		local key = cite.fields[self.reference_key_name]
@@ -149,7 +155,6 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 		end
 	end
 
-	local all_type = LBibTeX.CrossReference.all_type
 	for parent_key,child_keys in pairs(reffered) do
 		if #child_keys < self.mincrossrefs then goto continue end
 		local parent = db.db[parent_key]
@@ -157,6 +162,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 			local child = cites[child_number]
 			local inherit = get_fields(inherit_table,parent.type,child.type)
 			local override = get_fields(override_table,parent.type,child.type)
+--			print(table.unpack(override[all_type]))
 			
 			local allwrite = (self.all[all_type][all_type] == true or self.all[all_type][child.type] == true or self.all[parent.type][all_type] == true or self.all[parent.type][child.type] == true)
 			for key,value in pairs(parent.fields) do
@@ -167,34 +173,39 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 					else goto continue end
 				end
 				for dummy,target_field_key in ipairs(target_field_keys) do
-					print("CROSS: " .. target_field_key .. "=>" .. key)
 					local isoverride = nil
 					if child.fields[target_field_key] == nil then isoverride = true
 					-- override[key]の中身は{{"title",true},...}
 					elseif override[key] ~= nil then
 						for dummy,x in ipairs(override[key]) do
-							if x[0] == al_type or x[0] == target_field_key then 
-								isoverride = x[1]
+							if x[1] == al_type or x[1] == target_field_key then 
+								isoverride = x[2]
 								break
 							end
 						end
 					elseif override[all_type] ~= nil then
 						for dummy,x in ipairs(override[all_type]) do
-							if x[0] == al_type or x[0] == target_field_key then 
-								isoverride = x[1]
+							if x[1] == all_type or x[1] == target_field_key then 
+								isoverride = x[2]
 								break
 							end
 						end
 					end
-					if isoverride == nil then isoverride = false end
 					if isoverride == true then
-						child.fields[target_field_key] = parent.fields[key]
+						child:add_field(target_field_key,parent,key)
 					end
 				end
 				::continue::
 			end
 		end
-		table.insert(cites,parent)
+		local insert = true
+		for i,c in ipairs(cites) do
+			if c.key == parent.key then
+				insert = false
+				break
+			end
+		end
+		if insert == true then table.insert(cites,parent:clone()) end
 		::continue::
 	end
 	return cites

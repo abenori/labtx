@@ -189,7 +189,7 @@ function std_styles.sort(cites,array,formatter,equals,lessthan)
 		end
 	end
 	
-	table.sort(cites,sortfunc)
+	LBibTeX.stable_sort(cites,sortfunc)
 	return cites
 end
 

@@ -6,10 +6,10 @@ require "lbt-database"
 -- LBibTeX.LBibTeX.aux, LBibTeX.LBibTeX.style, LBibTeX.LBibTeX.cites, LBibTeX.LBibTeX.bibs, LBibTeX.LBibTeX.bbl (stream)
 
 LBibTeX.LBibTeX = {}
-setmetatable(LBibTeX.LBibTeX,{__index = LBibTeX.Database})
+setmetatable(LBibTeX.LBibTeX,{__index = LBibTeX.BibDatabase})
 
 function LBibTeX.LBibTeX.new()
-	local obj = LBibTeX.Database.new()
+	local obj = LBibTeX.BibDatabase.new()
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -26,51 +26,97 @@ local function includeskey(table,key)
 	return false
 end
 
-function LBibTeX.LBibTeX:load_aux(file)
-	local aux = LBibTeX.LBibTeX.read_aux(file)
-	self.aux_contents = aux
-	self.cites = {}
-	if aux["citation"] ~= nil then
-		for i = 1,#aux["citation"] do
-			if aux["citation"][i][1] ~= nil then
-				if aux["citation"][i][1].arg == "*" then
-					self.cites = nil
+function LBibTeX.read_aux(file)
+	local aux = {}
+	aux.citekeys = {}
+	aux.database = {}
+	aux.args = {}
+	local fp,msg = io.open(file,"r","UTF-8")
+	if fp == nil then return nil,msg end
+	for line in fp:lines() do
+		if line:sub(1,1) == "\\" then
+			local p = line:find("[%[{%(]")
+			local cs = ""
+			if p == nil then
+				cs = line
+				line = ""
+			else
+				cs = line:sub(2,p - 1)
+				line = line:sub(p)
+			end
+			if aux.args[cs] == nil then aux.args[cs] = {} end
+			local args = {}
+			while true do
+				local op = line:sub(1,1)
+				local cld = ""
+				if op == "{" then cld = "}"
+				elseif op == "(" then cld = ")"
+				elseif op == "[" then cld = "]"
+				else break end
+				local p,q = line:find("%b" .. op .. cld)
+				if p ~= nil then
+					table.insert(args,{arg = line:sub(p + 1,q - 1),open = op, close = cld})
+					line = line:sub(q + 1)
+				else break end
+			end
+			table.insert(aux.args[cs],args)
+		end
+	end
+	fp:close()
+	
+	local citeall = false
+	if aux.args["citation"] ~= nil then
+		for i = 1,#aux.args["citation"] do
+			if aux.args["citation"][i][1] ~= nil then
+				if aux.args["citation"][i][1].arg == "*" then
+					citeall = true
 					break
 				else
-					if not includeskey(self.cites,aux["citation"][i][1].arg) then
-						local c = LBibTeX.Citation.new()
-						c.key = aux["citation"][i][1].arg
-						table.insert(self.cites,c)
+					if not includeskey(aux.citekeys,aux.args["citation"][i][1].arg) then
+						local c = {}
+						c.key = aux.args["citation"][i][1].arg
+						table.insert(aux.citekeys,c)
 					end
 				end
 			end
 		end
 	end
-	if aux["bibstyle"] ~= nil then
-		if aux["bibstyle"][1] ~= nil then
-			if aux["bibstyle"][1][1] ~= nil then
-				self.style = aux["bibstyle"][1][1].arg
+	if citeall == true then aux.citekeys = nil end
+
+	if aux.args["bibstyle"] ~= nil then
+		if aux.args["bibstyle"][1] ~= nil then
+			if aux.args["bibstyle"][1][1] ~= nil then
+				aux.style = aux.args["bibstyle"][1][1].arg
 			end
 		end
 	end
-	self.bibs = {}
-	if aux["bibdata"] ~= nil then
-		for i = 1,#aux["bibdata"] do
-			if aux["bibdata"][i][1] ~= nil then
+	if aux.args["bibdata"] ~= nil then
+		for i = 1,#aux.args["bibdata"] do
+			if aux.args["bibdata"][i][1] ~= nil then
 				local p = 0
 				while true do
-					local q = aux["bibdata"][i][1].arg:find(",",p)
+					local q = aux.args["bibdata"][i][1].arg:find(",",p)
 					if q == nil then
-						table.insert(self.bibs,aux["bibdata"][i][1].arg:sub(p))
+						table.insert(aux.database,aux.args["bibdata"][i][1].arg:sub(p))
 						break
 					else
-						table.insert(self.bibs,aux["bibdata"][i][1].arg:sub(p,q - 1))
+						table.insert(aux.database,aux.args["bibdata"][i][1].arg:sub(p,q - 1))
 					end
 					p = q + 1;
 				end
 			end
 		end
 	end
+	return aux
+end
+
+
+function LBibTeX.LBibTeX:load_aux(file)
+	local aux = LBibTeX.read_aux(file)
+	self.aux_contents = aux
+	self.cites = aux.citekeys
+	self.style = aux.style
+	self.bibs = aux.database
 	local r = file:find("%.[^./]*$")
 	local bbl,blg
 	if r == nil then
@@ -117,68 +163,6 @@ function LBibTeX.LBibTeX:load_aux(file)
 	return true
 end
 
-local function getargument(str)
-	local start = str:find("{")
-	if start == nil then return nil end
-	start = start + 1
-	local r = start
-	local nest = 0;
-	while true do
-		r = str:find("[{}]",r + 1)
-		if r == nil then return nil end
-		local s = str:sub(r,r)
-		if s == "{" then
-			nest = nest + 1;
-		elseif s == "}" then
-			if nest == 0 then
-				return str:sub(start,r - 1)
-			else
-				nest = nest - 1
-			end
-		end
-	end
-end
-
--- style/aux/cites/bibs/bbl/blg
--- \cs{ab}[cd](ef)みたいなのを読む．
--- 戻り：rv["cs"]：配列，それぞれ{arg = "ab",open="{",close="}"}みたいな．
--- rv["cs"][1][2] : 一つ目の\csの2つめの引数
-function LBibTeX.LBibTeX.read_aux(file)
-	local fp,msg = io.open(file,"r","UTF-8")
-	if fp == nil then return nil,msg end
-	local rv = {}
-	for line in fp:lines() do
-		if line:sub(1,1) == "\\" then
-			local p = line:find("[%[{%(]")
-			local cs = ""
-			if p == nil then
-				cs = line
-				line = ""
-			else
-				cs = line:sub(2,p - 1)
-				line = line:sub(p)
-			end
-			if rv[cs] == nil then rv[cs] = {} end
-			local args = {}
-			while true do
-				local op = line:sub(1,1)
-				local cld = ""
-				if op == "{" then cld = "}"
-				elseif op == "(" then cld = ")"
-				elseif op == "[" then cld = "]"
-				else break end
-				local p,q = line:find("%b" .. op .. cld)
-				if p ~= nil then
-					table.insert(args,{arg = line:sub(p + 1,q - 1),open = op, close = cld})
-					line = line:sub(q + 1)
-				else break end
-			end
-			table.insert(rv[cs],args)
-		end
-	end
-	fp:close()
-	return rv
-end
 
 local function table_connect(a,b)
 	for i = 1,#b do
