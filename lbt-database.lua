@@ -2,6 +2,7 @@ if LBibTeX == nil then LBibTeX = {} end
 
 LBibTeX.Database = {}
 
+
 --[[
 LBibTeX.Database
   LBibTeX.Database.db: データベース
@@ -11,8 +12,9 @@ LBibTeX.Database
 Ciation (local)
   key,type,fields[],extra_data[]にアクセスできる
   Citation:clone()
-  Citation:add_field(key,val): keyにvalを追加
-  Citation:add_field(key,cite,key1): keyにcite.fields[key1]を追加
+  Citation:set_field(key,val): keyにvalを追加
+  Citation:set_field(key,cite,key1): keyにcite.fields[key1]を追加
+  Citation:delete_field(key): keyを消す
   Citation:get_raw_field(key): conversionが作用されていない生データを取得
 
 LBibTeX.BibDatabase: LBibTeX.Databaseを継承
@@ -22,10 +24,13 @@ LBibTeX.BibDatabase: LBibTeX.Databaseを継承
 
 -- Citationクラス，key,type,fields[],extra_fields[],extra_data[]
 local Citation = {}
+-- extra_fields内に設定されていると，このフィールドは消されたものと見なす．
+local nil_data = {}
 
 local function fields_index(table,key)
 	meta = getmetatable(table)
 	local val = meta.__extra_fields[key]
+	if val == nil_data then return nil end
 	if val == nil then val = meta.__real_fields[key] end
 	if val == nil then return nil end
 	if meta.__conversions == nil or #meta.__conversions == 0 then return val end
@@ -40,6 +45,7 @@ local function fields_enum(table,index)
 	local val,newindex
 	if index == nil or meta.__extra_fields[index] ~= nil then
 		newindex,val = next(meta.__extra_fields,index)
+		if val == nil_data then newindex,val = next(meta.__extra_fields,newindex) end
 	end
 	if newindex == nil then
 		if meta.__extra_fields[index] == nil then newindex = index end
@@ -92,15 +98,21 @@ function Citation:clone()
 	return setmetatable(obj,{__index = Citation})
 end
 
--- add_field(key,val)でkeyにvalを入れる
--- add_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
-function Citation:add_field(key,a,b)
+-- set_field(key,val)でkeyにvalを入れる
+-- set_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
+function Citation:set_field(key,a,b)
 	local meta = getmetatable(self.fields)
 	if b == nil then
+		if a == nil then a = nil_data end
 		meta.__extra_fields[key] = a
 	else
-		meta.__extra_fields[key] = a:get_raw_field(b)		
+		meta.__extra_fields[key] = a:get_raw_field(b)
 	end
+end
+
+function Citation:delete_field(key)
+	local meta = getmetatable(self.fields)
+	meta.__extra_fields[key] = nil_data
 end
 
 function Citation:get_raw_field(key)

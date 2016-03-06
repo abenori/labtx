@@ -193,24 +193,36 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 							end
 						end
 					end
---					print("add field(" .. tostring(isoverride) .. "): from " .. target_field_key .. " in " .. parent_key .. " to " .. key .. " in " .. child.key .. ", value = " .. parent.fields[target_field_key])
+--					print("add field(" .. tostring(isoverride) .. "): from " .. target_field_key .. " in " .. parent.key .. " to " .. key .. " in " .. child.key .. ", value = " .. parent.fields[target_field_key])
 					if isoverride == true then
-						child:add_field(target_field_key,parent,key)
+						child:set_field(target_field_key,parent,key)
 					end
 				end
 				::continue::
 			end
 		end
-		local insert = true
-		if #child_keys < self.mincrossrefs then goto continue end
-		for i,c in ipairs(cites) do
-			if c.key == parent.key then
-				insert = false
+		if #child_keys >= self.mincrossrefs then
+			local insert = true
+			for i,c in ipairs(cites) do
+				if c.key == parent.key then
+					insert = false
+					break
+				end
+			end
+			if insert == true then table.insert(cites,parent:clone()) end
+		end
+		::continue::
+	end
+	-- 引用されていない文献のcrossrefは消す
+	for i,c in ipairs(cites) do
+		local del_crossref = true
+		for j,cc in ipairs(cites) do
+			if c.fields[self.reference_key_name] ~= nil and cc.key == unicode.utf8.lower(c.fields[self.reference_key_name]) then
+				del_crossref = false
 				break
 			end
 		end
-		if insert == true then table.insert(cites,parent:clone()) end
-		::continue::
+		if del_crossref == true then c:set_field(self.reference_key_name,nil) end
 	end
 	return cites
 end
