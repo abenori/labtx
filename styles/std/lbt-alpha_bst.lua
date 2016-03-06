@@ -36,7 +36,7 @@ for i = 1,#BibTeX.cites - 1 do
 	end
 end
 
-local f1 = std_styles.Template:make(std_styles.Template.Templates,std_styles.Template.Formatter)
-local f2 = std_styles.Template:make(std_styles.CrossReference.Templates,std_styles.Template.Formatter)
+local f1 = std_styles.Template:make(std_styles.Template.Templates,std_styles.Template.Formatters)
+local f2 = std_styles.Template:make(std_styles.CrossReference.Templates,std_styles.Template.Formatters)
 local f = std_styles.CrossReference:make_formatter(f1,f2)
 BibTeX:outputthebibliography(f)

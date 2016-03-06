@@ -1,60 +1,126 @@
 require "lbt-core"
 
--- not compatible with text.prefix$ (at least at this point)
-function LBibTeX.text_prefix(str,num)
-	local r = 1
-	local rv = ""
-	for i = 1,num do
-		if str:sub(r,r) ~= "{" then
-			rv = rv .. str:sub(r,r)
-			r = r + 1
+-- 三つの状態がある
+-- nestレベル=0: 1
+-- {}内，頭の文字はcsから始まる: 2
+-- {}内，頭の文字は普通の文字から: 3
+-- とりあえずこれで区切って返すのを考えてみる．
+function split_str_asin_bibtex(str)
+	local byteindex = 1
+	return function()
+		if byteindex > str:len() then return nil end
+		local r = str:find("{",byteindex)
+		local start = byteindex
+		if r == nil then
+			byteindex = str:len() + 1
+			return str:sub(start),1
+		elseif r == byteindex then
+			local r1,r2 = str:find("%b{}",byteindex)
+			if r2 == nil then r2 = str:len() end
+			byteindex = r2 + 1
+			if str:sub(r1 + 1,r1 + 1) == "\\" then
+				return str:sub(start,r2),2
+			else
+				return str:sub(start,r2),3
+			end
 		else
-			local p1,p2 = str:find("%b{}",r)
-			if p1 == nil then return rv end
-			rv = rv .. str:sub(p1,p2)
-			r = p2 + 1
+			byteindex = r
+			return str:sub(start,r - 1),1
 		end
 	end
-	return rv
 end
 
-function LBibTeX.text_length(str)
-	local len = 0
-	local r = 1
-	local strlen = str:len()
-	while r <= strlen do
-		if str:sub(r,r) ~= "{" then
-			r = r + 1
-		else
-			local p1,p2 = str:find("%b{}",r)
-			if p1 == nil then return len + 1 end
-			r = p2 + 1
+local function fix_nest(str)
+	local nest = 0
+	for c in string.utfcharacters(str) do
+		if c == "{" then nest = nest + 1
+		elseif c == "}" and nest > 0 then nest = nest - 1
 		end
-		len = len + 1
 	end
-	return len
+	r = str
+	while nest > 0 do
+		r = r .. "}"
+		nest = nest - 1
+	end
+	return r
+end
+
+-- strが特殊文字から始まっているかチェックする
+-- 始まっていた場合，二つ目の戻り値で特殊文字のバイト数を返す．
+-- \ss -> true,3
+local function is_special_string(str)
+	if str:sub(1,1) ~= "\\" then return false end
+	local special_cs = {"\\ss","\\i","\\j","\\oe","\\aa","\\o","\\l"}
+	for n,s in special_cs do
+		if str:sub(1,s:len()) == s then return true,s:len() end
+	end
+--[[
+	local t = str:sub(2,2)
+	if t == "`" or t == "'" or t == "^" or t == "\"" or t == "~" or t == "=" or t == "." or t == "u" or t == "v" or t == "H" or t == "t" or t == "c" or t == "d" or t == "b" then
+		if str:sub(3,3) == "{" then
+			local r1,r2 = str:find("%b{}")
+			if r1 == nil then return 
+			return true,r2
+		else return true,3
+	end
+]]
+	return false
+end
+
+
+local function first_utf8_char(str)
+	return string.utfcharacters(str)()
+end
+
+-- not compatible with text.prefix$ (at least at this point)
+-- strから頭numバイトをとる．ただし，文字を途中で切るようなことはしない．
+-- text_prefix("aあい",2)は"aあ"となるようにする．
+function LBibTeX.text_prefix(str,num)
+	local index = 1
+	local r = ""
+	for s,n in split_str_asin_bibtex(str) do
+		if n == 2 then
+			r = r .. s
+			index = index + 1
+		else
+			for c in string.utfcharacters(s) do
+				r = r .. c
+				if c ~= "{" and c ~= "}" then index = index + c:len() end
+				if index > num then return fix_nest(r) end
+			end
+		end
+		if index > num then return fix_nest(r) end
+	end
+end
+
+-- とりあず普通にバイト数で数えるやつ
+function LBibTeX.text_length(str)
+	local r = 0
+	for s,n in split_str_asin_bibtex(str) do
+		if n == 2 then r = r + 1
+		else r = r + s:gsub("[{}]",""):len()
+		end
+	end
+	return r
 end
 
 -- 検索関数funcによるsplit
--- funcは見付かった最初と最後を返す
--- 二つ目には分割していた文字を返す．
+-- funcは見付かった最初と最後を返す（バイト数）
+-- 戻り値：aXbYcで[XY]を検索した場合{a,b,c},{X,Y}
 function LBibTeX.string_split(str,func)
 	local array = {}
 	local separray = {}
-	local r = init
-	if r == nil then r = 1 end
-	local start = 0
+	local r = 1
 	while true do
 		local r1,r2,s = func(str:sub(r))
 		if r1 == nil then
-			table.insert(array,str:sub(start))
+			table.insert(array,str:sub(r))
 			return array,separray
 		else
 			r1 = r1 + r - 1
 			r2 = r2 + r - 1
-			table.insert(array,str:sub(start,r1 - 1))
-			table.insert(separray,s)
-			start = r2 + 1
+			table.insert(array,str:sub(r,r1 - 1))
+			table.insert(separray,str:sub(r1,r2))
 			r = r2 + 1;
 		end
 	end
@@ -374,31 +440,73 @@ local function apply_function_to_nonnested_str(str,func,pos)
 	end
 end
 
-function LBibTeX.change_case(s,t)
+-- str "t" change.case$ の結果
+-- A {\TeX B} --> A {\TeX b}
+-- A {X \TeX B} --> A {X \TeX B}
+-- {X \TeX B} --> {X \TeX B}
+-- {\TeX B} --> {\TeX B}
+-- A: {\\TeX B} -> A: {\\TeX B}
+-- とりあえず実装．もっとシンプルになりそうだけど……
+function LBibTeX.change_case(str,t)
 	t = t:lower()
-	if t == "t" then
-		local f = function(s)
-			local r = ""
-			local p = 0
-			while true do
-				local p1,p2 = s:find(": *.",p)
-				if p1 == nil then
-					return r .. s:sub(p):lower()
-				else
-					r = r .. s:sub(p,p1 - 1):lower() .. s:sub(p1,p2)
-					p = p2 + 1
+	local func
+	if t == "u" then func = unicode.utf8.upper
+	else func = unicode.utf8.lower end
+	
+	local incs = false
+	local isfirst = true
+	local isnewfirst = false
+	local nest = 0
+	local r = ""
+	local brafirst = false
+	local applyfunc = true -- {}内を調べているとき，これにfuncを作用させないとならないかどうか
+	for c in string.utfcharacters(str) do
+		if c == "\\" then
+			if brafirst == true then applyfunc = true end
+			brafirst = false
+			incs = true
+			r = r .. c
+		elseif c == "{" then
+			if nest == 0 then
+				brafirst = true
+				applyfunc = false
+			end
+			nest = nest + 1
+			r = r .. c
+		elseif c == "}" then
+			if nest > 0 then nest = nest - 1 end
+			if nest == 0 then
+				applyfunc = true
+				isfirst = false
+				isnewfirst = false
+			end
+			brafirst = false
+			r = r .. c
+		elseif t == "t" and c == ":" and nest == 0 then
+			isnewfirst = true
+			brafirst = false
+			r = r .. c
+		elseif c == " " then
+			if nest == 0 then isfirst = false end
+			incs = false
+			brafirst = false
+			r = r .. c
+		else
+			brafirst = false
+			if nest > 0 then
+				if incs == true or applyfunc == false then r = r .. c
+				elseif t == "t" and (isfirst == true or isnewfirst == true) then r = r .. c
+				else r = r .. func(c)
 				end
+			else
+				if t == "t" and (isfirst == true or isnewfirst == true) then r = r .. c
+				else r = r .. func(c) end
+				isnewfirst = false
+				isfirst = false
 			end
 		end
-		local start = 2
-		if s:sub(1,1) == "{" then start = 1 end
-		return apply_function_to_nonnested_str(s,f,start)
-	elseif t == "u" then
-		return apply_function_to_nonnested_str(s,string.upper)
-	elseif t == "l" then
-		return apply_function_to_nonnested_str(s,string.lower)
-	else return nil
 	end
+	return r
 end
 
 function LBibTeX.make_name_list(namearray, format, separray, etalstr)
@@ -500,11 +608,12 @@ function LBibTeX.LBibTeX:output_citation_check(citation_check)
 end
 
 -- [from,to]をソートする．
-local function merge_sort(list,from,to,comp,tmplist)
+local function merge_sort(list,from,to,comp)
+	local tmplist = {}
 	if to - from > 1 then
 		local mid = math.floor((to + from)/2)
-		merge_sort(list,from,mid,comp,tmplist)
-		merge_sort(list,mid+1,to,comp,tmplist)
+		merge_sort(list,from,mid,comp)
+		merge_sort(list,mid+1,to,comp)
 		local left = from
 		local right = mid + 1
 		local i = 1
@@ -537,6 +646,5 @@ end
 
 function LBibTeX.stable_sort(list,comp)
 	if comp == nil then comp = function(a,b) return a < b end end
-	local tmplist = {}
-	return merge_sort(list,1,#list,comp,tmplist)
+	return merge_sort(list,1,#list,comp)
 end

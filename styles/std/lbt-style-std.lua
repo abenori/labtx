@@ -168,7 +168,6 @@ function std_styles.sort(cites,array,formatter,equals,lessthan)
 	
 	for i = 1,#array do
 		if type(array[i]) ~= "table" then
-			if formatter[array[i]] == nil then formatter[array[i]] = formatter[array[i]] end
 			if formatter[array[i]] ~= nil then
 				for j = 1,#cites do
 					cites[j].sort_key[array[i]] = formatter[array[i]](cites[j])
@@ -187,6 +186,7 @@ function std_styles.sort(cites,array,formatter,equals,lessthan)
 				if not eq(a.fields[array[i]],b.fields[array[i]]) then return lt(a.fields[array[i]],b.fields[array[i]]) end
 			end
 		end
+		return false
 	end
 	
 	LBibTeX.stable_sort(cites,sortfunc)
@@ -395,7 +395,7 @@ end
 
 function std_styles.Template.Formatters:incollection_crossref(c)
 	local r = ""
-	if c.fields["editor"] ~= nil and c.fields["editor"] == c.fields["author"] then
+	if c.fields["editor"] ~= nil and c.fields["editor"] ~= c.fields["author"] then
 		return "In " .. self:editor_crossref(c)
 	elseif c.fields["key"] ~= nil then return "In " .. c.fields["key"]
 	elseif c.fields["booktitle"] ~= nil then return "In {\\em " .. c.fields["booktitle"] .. "\\/}"

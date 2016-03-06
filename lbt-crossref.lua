@@ -20,7 +20,7 @@ CrossReference.override["article"]["book"] = {
 ]]
 
 function LBibTeX.CrossReference.new()
-	local obj = {reference_key_name = "crossref",override = {},inherit = {},all = {},mincrossrefs=1}
+	local obj = {reference_key_name = "crossref",override = {},inherit = {},all = {},mincrossrefs=2}
 	local function no_return_nil(table,key)
 		local x = rawget(table,key)
 		if x == nil then
@@ -146,17 +146,19 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 	local reffered = {}
 	for i,cite in ipairs(cites) do
 		local key = cite.fields[self.reference_key_name]
-		if key ~= nil and db.db[key] ~= nil then
-			if reffered[key] == nil then
-				reffered[key] = {i}
-			else
-				table.insert(reffered[key],i)
+		if key ~= nil then 
+			key = unicode.utf8.lower(key)
+			if db.db[key] ~= nil then
+				if reffered[key] == nil then
+					reffered[key] = {i}
+				else
+					table.insert(reffered[key],i)
+				end
 			end
 		end
 	end
 
 	for parent_key,child_keys in pairs(reffered) do
-		if #child_keys < self.mincrossrefs then goto continue end
 		local parent = db.db[parent_key]
 		for i,child_number in ipairs(child_keys) do
 			local child = cites[child_number]
@@ -191,6 +193,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 							end
 						end
 					end
+--					print("add field(" .. tostring(isoverride) .. "): from " .. target_field_key .. " in " .. parent_key .. " to " .. key .. " in " .. child.key .. ", value = " .. parent.fields[target_field_key])
 					if isoverride == true then
 						child:add_field(target_field_key,parent,key)
 					end
@@ -199,6 +202,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 			end
 		end
 		local insert = true
+		if #child_keys < self.mincrossrefs then goto continue end
 		for i,c in ipairs(cites) do
 			if c.key == parent.key then
 				insert = false
