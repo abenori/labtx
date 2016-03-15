@@ -147,6 +147,9 @@ function LBibTeX.LBibTeX:load_aux(file)
 	self.bbl = io.open(bbl,"w")
 	self.blg = io.open(blg,"w")
 	self.warning_count = 0
+end
+
+function LBibTeX.LBibTeX:read_db()
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
 		if bibfile == nil or self:read(bibfile) == false then
