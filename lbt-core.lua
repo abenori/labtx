@@ -1,12 +1,17 @@
 if LBibTeX == nil then LBibTeX = {} end
+LBibTeX.debug = false
 
 require "lbt-database"
+require "lbt-crossref"
+require "lbt-template"
 
 -- bblを表す構造
 -- LBibTeX.LBibTeX.aux, LBibTeX.LBibTeX.style, LBibTeX.LBibTeX.cites, LBibTeX.LBibTeX.bibs, LBibTeX.LBibTeX.bbl (stream)
 
 LBibTeX.LBibTeX = {}
 setmetatable(LBibTeX.LBibTeX,{__index = LBibTeX.BibDatabase})
+
+local lbibtex_default = require "lbt-default"
 
 function LBibTeX.LBibTeX.new()
 	local obj = LBibTeX.BibDatabase.new()
@@ -16,6 +21,19 @@ function LBibTeX.LBibTeX.new()
 	obj.bibs = {}
 	obj.bbl = nil
 	obj.blg = nil
+	-- 以下アウトプット用設定
+	obj.crossref = LBibTeX.CrossReference.new()
+	obj.crossref.templates = {}
+	obj.blockseparator = {}
+	obj.templates = {}
+	obj.formatters = {}
+	obj.sorting = {}
+	obj.sorting.formatters = lbibtex_default.sorting.formatters
+	obj.sorting.lessthan = lbibtex_default.sorting.lessthan
+	obj.sorting.equal = lbibtex_default.sorting.equal
+	obj.sorting.targets = lbibtex_default.sorting.targets
+	obj.label = lbibtex_default.label -- obj.label.make, obj.label.add_suffix
+	obj.modify_citations = nil
 	return setmetatable(obj,{__index = LBibTeX.LBibTeX})
 end
 
@@ -163,7 +181,6 @@ function LBibTeX.LBibTeX:load_aux(file)
 	return true
 end
 
-
 local function table_connect(a,b)
 	for i = 1,#b do
 		table.insert(a,b[i])
@@ -218,41 +235,103 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 				self:warning("no style is defined for " .. t)
 				f = formatter[""]
 				if f == nil then self:error("default style is not defined") end
-			else
-				local s = "\\bibitem"
-				local label = self.cites[i].label
-				if label ~= nil then
-					s = s .. "[" .. label .. "]"
-				end
-				local key = self.cites[i].key
-				s = s .. "{" .. key .. "}"
-				self:outputline(s)
-				s = f(self.cites[i])
-				s = tostring(s);
-				self:outputline(trim(s:gsub("  +"," ")))
-				self:outputline("")
 			end
+			local s = "\\bibitem"
+			local label = self.cites[i].label
+			if label ~= nil then
+				s = s .. "[" .. label .. "]"
+			end
+			local key = self.cites[i].key
+			s = s .. "{" .. key .. "}"
+			self:outputline(s)
+			s = f(self.cites[i])
+			s = tostring(s);
+--			s = s:gsub("{([A-Z])}","%1")
+			self:outputline(trim(s:gsub("  +"," ")))
+			self:outputline("")
 		end
 	end
 end
 
-function LBibTeX.LBibTeX:outputthebibliography(formatter)
+local function get_sorting_formatter(formatters,target,cite)
+	return formatters[target] or formatters[""]
+end
+
+local function generate_sortfunction(targets,formatters,equal,lessthan)
+	return function(lhs,rhs)
+		for i,target in ipairs(targets) do
+			local l = get_sorting_formatter(formatters,target,lhs.type)
+			if l == nil then l = lhs.fields[target]
+			else l = l(formatters,lhs) end
+			if l == nil then goto continue end
+			local r = get_sorting_formatter(formatters,target,rhs.type)
+			if r == nil then r = rhs.fields[target]
+			else r = r(formatters,rhs) end
+			if r ~= nil then
+				if equal(l,r) == false then
+					if LBibTeX.debug == true then
+						print("for comparing " .. lhs.key .. " and " .. rhs.key .. ", " .. target .. " is used, the values are:")
+						print(l)
+						print(r)
+					end
+					return lessthan(l,r)
+				end
+			end
+			::continue::
+		end
+		return false
+	end
+end
+
+function LBibTeX.LBibTeX:outputthebibliography()
+	-- formatter生成
+	local template = LBibTeX.Template.new(self.blockseparator)
+	local formatter,cross_formatter,msg
+	formatter,msg = template:make(self.templates, self.formatters)
+	if formatter == nil then self:error(msg) return end
+	cross_formatter,msg = template:make(self.crossref.templates, self.formatters)
+	if cross_formatter == nil then self:error(msg) return end
+	formatter = self.crossref:make_formatter(formatter,cross_formatter)
+	-- Cross Reference
+	self.cites = self.crossref:modify_citations(self.cites,self)
+	-- label生成
+	if self.label.make ~= nil then
+		for i,c in ipairs(self.cites) do
+			c.label = self.label:make(c)
+		end
+	end
+	-- sort
+	if self.sorting ~= nil and self.sorting.targets ~= nil and #self.sorting.targets > 0 then
+		local sort_formatter
+		sort_formatter,msg = template:modify_functions(self.sorting.formatters)
+		if sort_formatter == nil then self:error(msg) return end
+		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
+		self.cites = LBibTeX.stable_sort(self.cites, sortfunc)
+	end
+	-- label suffix
+	if self.label.make ~= nil and self.label.add_suffix ~= nil then
+		if type(self.label.add_suffix) ~= "function" then self:error("style file error: label.add_suffix is not a function") return end
+		self.cites = self.label:add_suffix(self.cites)
+	end
+	
 	local longest_label = self:get_longest_label()
 	if longest_label == nil then longest_label = tostring(#self.cites) end
+
+	-- check citations
+	self:output_citation_check(LBibTeX.citation_check(self.cites))
+
+	-- last modification
+	if self.modify_citations ~= nil then
+		if type(self.modify_citations) ~= "function" then self:error("style file error: modify_citations is not a function") return end
+		self.cites = self:modify_citations(self.cites)
+	end
+
+	-- output
 	self:outputline(self.preamble)
 	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)
 	self:outputline("\\end{thebibliography}")
-end
-
--- key に = が入っていると失敗する．
-local function getkeyval(str)
-	local eq = str:find("=")
-	if eq == nil then return str,nil end
-	local key = trim(str:sub(1,eq-1))
-	local val = trim(str:sub(eq+1))
-	return key,val
 end
 
 function LBibTeX.LBibTeX:warning(s)
@@ -278,13 +357,20 @@ function LBibTeX.LBibTeX:message(s)
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
+
 ---------------------------------------------------
-LBibTeX.debug = {}
-function LBibTeX.debug.outputarray(a)
-	print("array size = " .. tostring(#a) .. "\n")
-	for i = 1, #a do
-		print("i = " .. tostring(i) .. ", type = " .. type(a[i]) .. "\n" .. tostring(a[i]))
+if LBibTeX.debug == true then
+	LBibTeX.debugger = {}
+	function LBibTeX.debuger.outputarray(a)
+		print("array size = " .. tostring(#a) .. "\n")
+		for i = 1, #a do
+			print("i = " .. tostring(i) .. ", type = " .. type(a[i]) .. "\n" .. tostring(a[i]))
+		end
+	end
+
+	function LBibTeX.debuger.outputtable(a)
+		for k,v in pairs(a) do
+			print("key = " .. tostring(k) .. ", type = " .. type(v) .. "\n" .. tostring(v))
+		end
 	end
 end
-
-

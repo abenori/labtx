@@ -1,4 +1,4 @@
-require "lbt-core"
+if LBibTeX == nil then LBibTeX = {} end
 
 local function addperiod(s)
 	if s:find("%.[ ~]*$") == nil then return s .. "."
@@ -22,10 +22,13 @@ function LBibTeX.bibitem:tostring()
 end
 
 LBibTeX.block = {}
-function LBibTeX.block.new(sep, las, c)
-	local obj = {defaultseparator = sep, last = las, contents = c, separators={}}
-	if obj.defaultseparator == nil then obj.defaultseparator = "" end
-	if obj.last == nil then obj.last = "" end
+-- separatorは二つの配列{A,B}からなる
+-- A,Bが配列の時，searatorは前からA[1],A[2],...,A[#A],A[#A],...,B[1],...,B[#B]
+-- 長さが足りないときはAが削られる
+-- AやBが文字列の時は長さ1の配列と同じ扱い．
+function LBibTeX.block.new(sep, c)
+	local obj = {defaultseparator = sep, contents = c, separators={}}
+	if obj.defaultseparator == nil then obj.defaultseparator = {"",""} end
 	if obj.contents == nil then obj.contents = {} end
 	return setmetatable(obj,{__index = LBibTeX.block, __tostring = LBibTeX.block.tostring});
 end
@@ -44,15 +47,22 @@ function LBibTeX.block:setseparator(i,s)
 	self.separators[i] = s
 end
 
-function LBibTeX.block:tostring()
-	return tostring(self:toustring())
+local function get_separator(seps,index,length)
+	local a = seps[1]
+	local b = seps[2]
+	if type(a) ~= "table" then a = {tostring(a)} end
+	if type(b) ~= "table" then b = {tostring(b)} end
+	if index + #b > length then return b[#b + index - length]
+	elseif index < #a then return a[index]
+	else return a[#a]
+	end
 end
 
-function LBibTeX.block:toustring()
+function LBibTeX.block:tostring()
 	local r = ""
 	for i = 1,#self.contents do
-		local sep
-		if self.separators[i] == nil then sep = self.defaultseparator
+		local sep = ""
+		if self.separators[i] == nil then sep = get_separator(self.defaultseparator,i - 1,#self.contents)
 		else sep = self.separators[i] end
 		sep = tostring(sep);
 		local periodfirst = false
@@ -80,10 +90,11 @@ function LBibTeX.block:toustring()
 		end
 	end
 	if r == "" then return "" end
-	if self.last:sub(1,1) == "." then
-		r = addperiod(r) .. self.last:sub(2)
+	local last = get_separator(self.defaultseparator,#self.contents,#self.contents)
+	if last:sub(1,1) == "." then
+		r = addperiod(r) .. last:sub(2)
 	else
-		r = r .. self.last
+		r = r .. last
 	end
 	return r
 end

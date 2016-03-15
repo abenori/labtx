@@ -6,16 +6,22 @@ LBibTeX.Database = {}
 --[[
 LBibTeX.Database
   LBibTeX.Database.db: データベース
-  LBibTeX.Database.conversions: fieldを変換する関数
+  LBibTeX.Database.conversions: fieldを変換する関数，function(str,extra_data)
   LBibTeX.Database.add_db(cites) citesは配列，各々にはkey,type,fields,extra_dataを定義しておく
   
 Ciation (local)
   key,type,fields[],extra_data[]にアクセスできる
   Citation:clone()
-  Citation:set_field(key,val): keyにvalを追加
+  Citation:set_field(key,val): keyにvalを追加，cite.fields[key] = valでも同じ
   Citation:set_field(key,cite,key1): keyにcite.fields[key1]を追加
   Citation:delete_field(key): keyを消す
   Citation:get_raw_field(key): conversionが作用されていない生データを取得
+  filedsへのアクセスは大文字小文字を無視する（格納は小文字，アクセス時には小文字に変換して処理）
+
+metatableに__real_fieldsと__extra_fieldsを用意
+__real_fieldsはdbとかのコピーのつもり．__extra_fieldsは構築後に変更されたフィールドを保持
+__index，__newindexは書き換えてある，metatable.__conversionsを通した値を返す
+metatable.__conversionsは親LBibTeX.Database.conversionsのコピー
 
 LBibTeX.BibDatabase: LBibTeX.Databaseを継承
   macros[**]でマクロが設定できる
@@ -28,6 +34,7 @@ local Citation = {}
 local nil_data = {}
 
 local function fields_index(table,key)
+	key = unicode.utf8.lower(key)
 	meta = getmetatable(table)
 	local val = meta.__extra_fields[key]
 	if val == nil_data then return nil end
@@ -38,6 +45,12 @@ local function fields_index(table,key)
 		val = conv(val,meta.__extra_data)
 	end
 	return val
+end
+
+local function fields_newindex(table,key,value)
+	meta = getmetatable(table)
+	if value == nil then meta.__extra_fields[key] = nil_data
+	else meta.__extra_fields[key] = value end
 end
 	
 local function fields_enum(table,index)
@@ -66,8 +79,12 @@ end
 
 
 function Citation.new(db,data)
-	local obj = {fields = {},key = data.key, type = data.type, extra_data = data.extra_data}
-	
+	local obj = {}
+	for k,v in pairs(data) do
+		if k ~= "extra_data" then obj[k] = v end
+	end
+	obj.extra_data = data.extra_data
+	obj.fields = {}
 	local fields = data.fields
 	if fields == nil then fields = {} end
 	extra_fields = data.extra_fields
@@ -87,9 +104,10 @@ function Citation:clone()
 	local meta = getmetatable(self)
 	local obj = {fields = {},key = self.key,type = self.type, extra_data = self.extra_data}
 	local extra_fields = {}
-	for k,v in meta.__extra_fields do extra_fields[k] = v end
+	for k,v in pairs(meta.__extra_fields) do extra_fields[unicode.utf8.lower(k)] = v end
 	setmetatable(obj.fields,{
 		__index = fields_index,
+		__newindex = fields_newindex,
 		__real_fields = meta.__real_fields,
 		__extra_fields = extra_fields,
 		__conversions = meta.conversions,
@@ -101,6 +119,7 @@ end
 -- set_field(key,val)でkeyにvalを入れる
 -- set_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
 function Citation:set_field(key,a,b)
+	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	if b == nil then
 		if a == nil then a = nil_data end
@@ -111,13 +130,16 @@ function Citation:set_field(key,a,b)
 end
 
 function Citation:delete_field(key)
+	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	meta.__extra_fields[key] = nil_data
 end
 
 function Citation:get_raw_field(key)
+	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	local val = meta.__extra_fields[key]
+	if val == nil_data then return nil end
 	if val == nil then val = meta.__real_fields[key] end
 	return val
 end
@@ -127,8 +149,8 @@ function LBibTeX.Database.new()
 	return setmetatable(obj,{__index = LBibTeX.Database})
 end
 
-function LBibTeX.Database:add_db(datas)
-	for k,v in pairs(datas) do
+function LBibTeX.Database:add_db(data)
+	for k,v in pairs(data) do
 		self.db[v.key] = Citation.new(self,v)
 	end
 end
@@ -318,12 +340,13 @@ end
 
 -- return db,preamble,macros
 local function read_database(file)
-	buf = buffer.new(kpse.find_file(file))
+	buf = buffer.new(file)
 	if buf == nil then return nil,nil,nil end
 	local preamble = ""
 	local macros = {}
 	local db = {}
 	line = buf:read()
+	local number = 1
 	while line ~= nil do
 		local r = nil
 		while line ~= nil do
@@ -377,6 +400,8 @@ local function read_database(file)
 				c = {}
 				c.fields = {}
 				c.extra_data = {}
+				c.number = number
+				number = number + 1
 				local s,field
 				repeat
 					field,s,line = get_entry(line,buf,endbra)

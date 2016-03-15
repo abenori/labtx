@@ -1,12 +1,12 @@
-require "lbt-core"
+if LBibTeX == nil then LBibTeX = {} end
 require "lbt-item"
 
 --[[
 書式をあたえるとスタイルを生成してくれるようにする．
 こんな感じ．
-[**:**:**]：ブロック．あたえられた結合文字列を使って結合される．空文字列は無視される．ネスト可能．LBibTeX.Template.blockseparator[nest], LBibTeX.Template.blocklast[nest]で結合部分/最後の文字列をどうにかできる．ピリオドは連続しないように処理される．:@S<***>とするとそこの区切り文字を***に変更する．
+[**:**:**]：ブロック．あたえられた結合文字列を使って結合される．空文字列は無視される．ネスト可能．LBibTeX.Template.blockseparator[nest]で結合部分/最後の文字列をどうにかできる．ピリオドは連続しないように処理される．:@S<***>とするとそこの区切り文字を***に変更する．
 <(LEFT)|(STR)|(RIGHT)>：STR != ""ならば(LEFT)(STR)(RIGHT)を出す，STR==""ならば空文字列
-$<A|B|C|...>：関数Aが呼び出され，その値が空ならばBが呼び出され……となり，最初に空でないものが出力される．関数Aが見付からない場合は名前がAのfieldが呼ばれる．（例えば，$<title>は関数 titleが定義されていなければタイトルそのものがでる．）
+$<A|B|C|...>：関数Aが呼び出され，その値が空ならばBが呼び出され……となり，最初に空でないものが出力される．関数Aが見付からない場合は名前がAのfieldが呼ばれる．（例えば，$<title>は関数 titleが定義されていなければタイトルそのものがでる．）Aの代わりに(A)とするとAはテンプレートとして解釈される．
 全ては%でエスケープできる．
 ]]
 
@@ -148,12 +148,14 @@ function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 	local f = {}
 	local seps = {}
 	for i = 1,#array do
-		if array[i]:sub(1,1) == "@" then
-			if array[i]:sub(2,2) == "S" then 
-				local a,r = GetArrayOfBlocks(array[i],"<",">",nil,4)
-				if a == nil then return nil end
-				seps[i] = self:MakeTemplateImpl(a[1],funcs,blocknest + 1)
-				array[i] = array[i]:sub(r)
+		if i > 1 then
+			if array[i]:sub(1,1) == "@" then
+				if array[i]:sub(2,2) == "S" then 
+					local a,r = GetArrayOfBlocks(array[i],"<",">",nil,4)
+					if a == nil then return nil end
+					seps[i] = self:MakeTemplateImpl(a[1],funcs,blocknest + 1)
+					array[i] = array[i]:sub(r)
+				end
 			end
 		end
 		local ff = self:MakeTemplateImpl(array[i],funcs,blocknest + 1)
@@ -161,15 +163,15 @@ function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 		table.insert(f,ff)
 	end
 	return function(c)
-		local block = LBibTeX.block.new(self.blockseparator[blocknest],self.blocklast[blocknest])
+		local block = LBibTeX.block.new(self.blockseparator[blocknest])
 		local sepnumber = 1
 		for i = 1, #f do
 			local a = f[i](c)
 			block:addarrayitem(a)
-			if seps[i] ~= nil then block:setseparator(sepnumber,array_to_string(seps[i](c))) end
+			if i > 1 and seps[i] ~= nil then block:setseparator(sepnumber,array_to_string(seps[i](c))) end
 			sepnumber = sepnumber + #a
 		end
-		return {block:toustring()}
+		return {block:tostring()}
 	end
 end
 
@@ -197,17 +199,25 @@ end
 function LBibTeX.Template:MakeFormatFunction(array,funcs)
 	local ff = {}
 	for i = 1,#array do
-		local f = funcs[array[i]]
-		if f == nil then
-			ff[i] = function(f,c)
-				local r = c.fields[array[i]]
-				if r == nil then return nil
-				else return tostring(r) end
+		if array[i]:sub(1,1) == "(" and array[i]:sub(-1) == ")" then
+			local f = self:MakeTemplateImpl(array[i]:sub(2,-2),funcs,blocknest)
+			if f == nil then return nil end
+			ff[i] = function(funcs,c)
+				return f(c)
 			end
-		elseif type(f) ~= "function" then
-			return nil
 		else
-			ff[i] = f
+			if array[i]:sub(1,2) == "%(" then array[i] = array[i]:sub(2) end
+			if array[i]:sub(-2,-1) == "%)" then array[i] = array[i]:sub(1,-3) .. ")" end
+			local f = funcs[array[i]]
+			if type(f) ~= "function" then
+				ff[i] = function(f,c)
+					local r = c.fields[array[i]]
+					if r == nil then return nil
+					else return tostring(r) end
+				end
+			else
+				ff[i] = f
+			end
 		end
 	end
 	return function(c)
@@ -243,7 +253,11 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 		end
 		local f1 = self:MakeBlockFunction(array,funcs,blocknest)
 		local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
-		if f1 == nil or f2 == nil then return nil end
+		if f1 == nil then 
+			LBibTeX.Template.LastMsg = "template error in " .. table.concat(array," ")
+			return nil
+		end
+		if f2 == nil then return nil end
 		return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 1))),f1(c)),f2(c)) end
 	else
 		local r1
@@ -264,7 +278,11 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 			end
 			local f1 = self:MakeStringFunction(array,funcs,blocknest)
 			local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
-			if f1 == nil or f2 == nil then return nil end
+			if f1 == nil then 
+				LBibTeX.Template.LastMsg = "template error in " .. table.concat(array," ")
+				return nil
+			end
+			if f2 == nil then return nil end
 			return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 1))),f1(c)),f2(c)) end
 		else
 			-- $<A|B|...>
@@ -275,7 +293,11 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 			end
 			local f1 = self:MakeFormatFunction(array,funcs)
 			local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
-			if f1 == nil or f2 == nil then return nil end
+			if f1 == nil then 
+				LBibTeX.Template.LastMsg = "template error in " .. table.concat(array," ")
+				return nil
+			end
+			if f2 == nil then return nil end
 			return function(c) return table_connect(table_connect(string_to_array(UnEscape(templ:sub(1,bra - 2))),f1(c)),f2(c)) end
 		end
 	end
@@ -284,7 +306,11 @@ end
 
 LBibTeX.Template.LastMsg = ""
 
+
 function LBibTeX.Template:modify_functions(funcs)
+	if type(funcs) ~= "table" then 
+		return nil,"LBibTeX.Template.make: type error, type(formatters) = " .. type(funcs)
+	end
 	local ff = {}
 	while true do
 		local changed = false
@@ -294,7 +320,9 @@ function LBibTeX.Template:modify_functions(funcs)
 				if f ~= nil then
 					ff[k] = function(dummy,c) return f(c) end
 					changed = true
-				else ff[k] = v end
+				else
+					return nil,LBibTeX.Template.LastMsg
+				end
 			else ff[k] = v end
 		end
 		if not changed then break end
@@ -315,8 +343,7 @@ function LBibTeX.Template:make_from_str(templ,funcs)
 	LBibTeX.Template.LastMsg = ""
 	local f = self:MakeTemplateImpl(templ,funcs,1)
 	if f == nil then
-		print(LBibTeX.Template.LastMsg)
-		return nil
+		return nil,LBibTeX.Template.LastMsg
 	end
 	return function(c)
 		return array_to_string(f(c))
@@ -324,18 +351,24 @@ function LBibTeX.Template:make_from_str(templ,funcs)
 end
 
 function LBibTeX.Template:make(templs,funcs)
+	if type(templs) ~= "table" or type(funcs) ~= "table" then
+		return nil,"LBibTeX.Template.make: type error, type(templates) = " .. type(templs) .. ", type(formatters) = " .. type(funcs)
+	end
 	local f = {}
 	local ff
-	local funcs_f = self:modify_functions(funcs)
+	local msg
+	local funcs_f,msg = self:modify_functions(funcs)
+	if funcs_f == nil then return nil,msg end
 	for k,v in pairs(templs) do
-		ff = self:make_from_str(v,funcs_f)
-		if ff == nil then return nil end
+		ff,msg = self:make_from_str(v,funcs_f)
+		if ff == nil then return nil,msg end
 		f[k] = ff
 	end
 	return f
 end
 
-function LBibTeX.Template.new()
-	local obj = {blockseparator = {},blocklast = {}}
+function LBibTeX.Template.new(separators)
+	local obj = {blockseparator = {}}
+	if separators ~= nil then obj.blockseparator = separators end
 	return setmetatable(obj,{__index = LBibTeX.Template})
 end

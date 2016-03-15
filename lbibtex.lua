@@ -1,5 +1,5 @@
 local start_time = os.clock()
-kpse.set_program_name("bibtex")
+kpse.set_program_name("texlua","bibtex")
 require "lbt-core"
 
 local f = arg[1]

@@ -1,4 +1,5 @@
-require "lbt-core"
+if LBibTeX == nil then LBibTeX = {} end
+if LBibTeX.LBibTeX == nil then LBibTeX.LBibTeX = {} end
 
 -- 三つの状態がある
 -- nestレベル=0: 1
@@ -189,7 +190,7 @@ end
 
 function LBibTeX.split_names(names,seps)
 	if seps == nil then seps = {" [aA][nN][dD] "} end
-	f = function(str)
+	local f = function(str)
 		local r1,r2,t = nil
 		for i = 1,#seps do
 			local sep = seps[i]
@@ -332,13 +333,13 @@ function LBibTeX.get_name_parts(name)
 	return {first = first,jr = jr,last = last,von = von}
 end
 
-function LBibTeX.forat_name_by_parts(nameparts,format)
+function LBibTeX.format_name_by_parts(nameparts,format)
 	local nmpts = {}
 	for k,v in pairs(nameparts) do
 		nmpts[k] = v
 	end
 	local r = 1
-	formatted = ""
+	local formatted = ""
 	local lvjfsearch = function(s) return s:find("[lvjf]") end
 	while true do
 		-- {}を探して中身を処理する．
@@ -421,7 +422,7 @@ function LBibTeX.forat_name_by_parts(nameparts,format)
 end
 
 function LBibTeX.format_name(name,format)
-	return LBibTeX.forat_name_by_parts(LBibTeX.get_name_parts(name),format)
+	return LBibTeX.format_name_by_parts(LBibTeX.get_name_parts(name),format)
 end
 
 local function apply_function_to_nonnested_str(str,func,pos)
@@ -564,7 +565,7 @@ default_required["conference"] = default_required["incollection"]
 -- optional is ignored (at this point)
 function LBibTeX.citation_check(citations,required)
 	if required == nil then required = default_required end
-	r = {}
+	local r = {}
 	for dummy,v in pairs(citations) do
 		local tocheck = required[v.type]
 		if tocheck ~= nil then

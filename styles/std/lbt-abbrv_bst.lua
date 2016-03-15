@@ -1,5 +1,3 @@
-require "lbt-funcs"
-require "lbt-template"
 std_styles = require "lbt-style-std"
 
 BibTeX.macros["jan"] = "Jan."
@@ -35,13 +33,12 @@ BibTeX.macros["toois"] = "ACM Trans. Office Inf. Syst."
 BibTeX.macros["toplas"] = "ACM Trans. Prog. Lang. Syst."
 BibTeX.macros["tcs"] = "Theoretical Comput. Sci."
 
+function std_styles.formatters:nameformat(c) return "{f.~}{vv~}{ll}{, jj}" end
 
-BibTeX.cites = std_styles.CrossReference:modify_citations(BibTeX.cites,BibTeX)
-BibTeX:output_citation_check(LBibTeX.citation_check(BibTeX.cites))
+BibTeX.crossref = std_styles.crossref
+BibTeX.blockseparator = std_styles.blockseparator
+BibTeX.templates = std_styles.templates
+BibTeX.formatters = std_styles.formatters
+BibTeX.label.make = nil
 
-function std_styles.Template.Formatter:nameformat(c) return "{f.~}{vv~}{ll}{, jj}" end
-
-local f1 = std_styles.Template:make(std_styles.Template.Templates,std_styles.Template.Formatter)
-local f2 = std_styles.Template:make(std_styles.CrossReference.Templates,std_styles.Template.Formatter)
-local f = std_styles.CrossReference:make_formatter(f1,f2)
-BibTeX:outputthebibliography(f)
+BibTeX:outputthebibliography()

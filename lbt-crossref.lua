@@ -1,7 +1,7 @@
-require "lbt-core"
+if LBibTeX == nil then LBibTeX = {} end
 
 LBibTeX.CrossReference = {}
-LBibTeX.CrossReference.all_type = "*"
+LBibTeX.CrossReference.all_type = ""
 
 --[[
 reference_key_name, override, all, mincrossrefs
