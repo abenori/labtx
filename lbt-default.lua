@@ -8,11 +8,11 @@ local default = {}
 -- default.sorting.targets
 -- を上書きで微調整する
 
-default.sorting = {}
-default.sorting.lessthan = function(a,b) return unicode.utf8.lower(a) < unicode.utf8.lower(b) end
-default.sorting.equal = function(a,b) return unicode.utf8.lower(a) == unicode.utf8.lower(b) end
-default.sorting.formatters = {}
 local function purify(s) return s:gsub("\\[a-zA-Z]*",""):gsub("[^~ a-zA-Z0-9-]","") end
+default.sorting = {}
+default.sorting.lessthan = function(a,b) return unicode.utf8.lower(purify(a)) < unicode.utf8.lower(purify(b)) end
+default.sorting.equal = function(a,b) return unicode.utf8.lower(purify(a)) == unicode.utf8.lower(purify(b)) end
+default.sorting.formatters = {}
 local function remove_article(s)
 	if s:sub(1,4) == "The " then s = s:sub(5)
 	elseif s:sub(1,3) == "An " then s = s:sub(4)
@@ -45,7 +45,7 @@ function default.sorting.formatters:entry_key(c) return c.key end
 function default.sorting.formatters:label(c) return c.label end
 function default.sorting.formatters:title(c)
 	title = c.fields["title"]
-	if title ~= nil then remove_article(title) end
+	if title ~= nil then return remove_article(title) end
 	return nil	
 end
 function default.sorting.formatters:number(c) return c.number end
@@ -149,6 +149,7 @@ function default.label:add_suffix(cites)
 			changed = false
 		end
 	end
+	if lastindex > 0 then cites[#cites].label = cites[#cites].label .. self:suffix(lastindex + 1) end
 	return cites
 end
 

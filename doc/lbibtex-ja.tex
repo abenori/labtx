@@ -1,7 +1,9 @@
-\documentclass[dvipdfmx,a4paper]{jsarticle}
+\documentclass[a4paper]{ltjsarticle}
 \usepackage{url}
-\usepackage{listings,jlisting}
+\usepackage{listings}
 \usepackage[rgb, x11names]{xcolor}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
 \lstdefinestyle{Lua}{%
   language=[5.2]Lua,
   basicstyle=\ttfamily,
@@ -11,11 +13,14 @@
   keywordstyle=[3]\bfseries\color{Purple3},% labels
   stringstyle=\bfseries\color{Coral4},% strings
   commentstyle=\gtfamily\color{Green4},% comments
-  lineskip=-0.5zw,
+  lineskip=-0.5\zw,
 }
 \lstset{style=Lua,tabsize=2,showspaces=false}
 \DeclareRobustCommand{\LBibTeX}{L\BibTeX}
-
+%\newcommand*{\luafunction}[1]{\texttt{#1}}
+\newcommand*{\luatable}[1]{\texttt{#1}}
+\newcommand*{\luastring}[1]{``\texttt{#1}''}
+\newcommand{\LuaTeX}{Lua\TeX}
 
 
 \title{\LBibTeX}
@@ -26,20 +31,21 @@ Luaによる\BibTeX の実装です．
 
 \section{使い方}
 拡張子がluaであるファイルを全てkpathseaが探せる場所においてください．
-例えばTeXLiveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．
+例えばTeXLiveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．%$
+また，\url{lbibtex}または\url{lbibtex.bat}をPATHの通っている場所においてください．
 
 \begin{quote}
 \verb|$ bibtex sample|
 \end{quote}
 としていた代わりに
 \begin{quote}
-\verb|$ texlua lbibtex sample|
+\verb|$ lbibtex sample|
 \end{quote}
-としてください．つまり，sample.texを処理するには
+とします．つまり，sample.texを処理するには
 \begin{quote}
 \begin{verbatim}
 $ latex sample.tex
-$ texlua lbibtex sample
+$ lbibtex sample
 $ latex sample.tex
 $ latex sample.tex
 \end{verbatim}
@@ -48,18 +54,44 @@ $ latex sample.tex
 （現在のところ）オプションはありません．
 文字コードは（現在のところ）UTF-8に限定されています．
 
-シェルスクリプトやバッチファイルにしておくと便利かもしません．例えばWindowsの場合は，以下の内容をlbibtex.batとしてPATH内にあるフォルダに保存しておけば，\verb|$ lbibtex sample|
-として起動することができます．
-\begin{verbatim}
-@echo off
-for /F "usebackq" %%i in (`kpsewhich lbibtex.lua`) do (
-  set LBIBTEXLUA="%%i"
-)
-texlua %LBIBTEXLUA% %1 %2 %3 %4 %5 %6 %7 %8 %9
-\end{verbatim}
+
 
 \section{データベースについて}
-次のようなデータベースを読みます．
+通常の.bibを読むことができます．
+典型的には次のようになっています．
+\begin{verbatim}
+@article{reference,
+   author = "Last, First",
+   title = {Some title},
+}
+\end{verbatim}
+これはreferenceという名前のついたarticleに関する情報です．
+著者名とタイトルが定義されています．
+本マニュアルでは，
+\begin{itemize}
+\item 各々のデータを「エントリー」
+\item articleを「エントリータイプ」
+\item referenceを「エントリーキー」
+\item 著者名などの情報を「フィールド」
+\item author = "Last, First"におけるauthorを「キー」"Last, First"を「値」
+\end{itemize}
+と呼ぶことにします．
+エントリータイプ，エントリーキー，またフィールドのキーは大文字小文字を無視して処理されます．
+
+また次のようなデータ
+\begin{verbatim}
+@string{str = "some string"}
+@article{reference
+   title = "Title and " # str
+}
+\end{verbatim}
+に対しては，文字列の連結と置換が行われます．
+たとえばこの例ではreference内のtitleに対する値が\luastring{Title and some string}と置き換えられます．
+このような置き換えのルール（今の場合はstrを\luastring{some string}に置き換える）をマクロと呼ぶことにします．
+マクロはこのようにデータベース内のstringエントリーを使っても定義できますし，スタイルファイル内で定義することもできます．
+
+
+正確には次のようなEBNFで定義されたファイルを読みます．
 \begin{verbatim}
 Database = (Ignored '@' Entry)*
 Ignored = [^@]*
@@ -82,10 +114,11 @@ Name = ([^{}"]+ | '"'[^"]*'"' | '{' Name '}')*
 \item Commentはコメントです．無視されます．
 \item Preambleはそのままbblに書き出されることが想定されています．
 \item Stringはマクロを定義します．これは後述の「文字列連結機能」にて用いられます．
-\item Dataが文献情報を表します．Entry\_Key をエントリーキー，Fieldをフィールドと呼ぶことにします．フィールドはキー（Key）と値（Value）からなります．またEntry\_Type をこのエントリーのタイプと呼ぶことにします．
+\item Dataが文献情報を表します．
 \end{itemize}
 
-Preamble内のName，Field内のValueには「文字列連結」が適用されます．
+
+また文字列の連結および置換は次のように振る舞います．
 \begin{verbatim}
 Value = EachString ('#' EachString)*
 EachString = ([^#{}"]* | '"' [^"]* '"' | '{' EachString '}')*
@@ -96,47 +129,30 @@ EachString = ([^#{}"]* | '"' [^"]* '"' | '{' EachString '}')*
 \item EachStringと同じ文字列がマクロとして定義されていた場合，対応する文字列に変更されます．
 \item 最後に，最初及び最後の\verb|"{}|は削除されます．
 \end{itemize}
-マクロの定義はStringでされているものの他，スタイルファイル内で定義されているものも入ります．
 
 
 \section{スタイルファイルの書き方}
-Lua言語によりスタイルを記述することができます．kpathseaから見える場所に\verb|lbt-<style>_bst.lua|として保存してください．（\verb|<style>|はスタイル名．）
+Lua言語によりスタイルを記述することができます．kpathseaから見える場所に\url{lbt-<style>_bst.lua}として保存してください．（\url{<style>}はスタイル名．）
 標準のplain, alpha, abbrv, unsrtに対応するファイルは既に用意されています．
 
-次はplainスタイルファイルです．
+ごくごく簡単なスタイルファイルは次のようになります
 \begin{lstlisting}
--- lbt-plain_bst.lua
--- ライブラリをロード
-require "lbt-template"
--- 「標準的な」スタイルをロード
-std_styles = require "lbt-style-std"
--- ICU4Lua文字列の利用
-local icu = require "lbt-string"
-local U = icu.ustring
-
--- マクロ設定
-for v,k in pairs(std_styles.macros) do
-	BibTeX.macros[v] = k
+-- article用のテンプレート定義
+BibTeX.templates["article"] = "[$<auhor>:$<title>:$<journal>:$<year>]"
+-- タイトルと著者の出力設定
+function BibTeX.formatter:author(c)
+	if c.fields["author"] == nil then return nil end
+	local a = LBibTeX.split_names(c.fields["author"])
+	if #a <= 2 then
+		return LBibTeX.make_name_list(a,"{ff~}{vv~}{ll}{, jj}",{", "," and "},", et~al.")
+	else
+		return LBibTeX.make_name_list(a,"{ff~}{vv~}{ll}{, jj}",{", ",", and "},", et~al.")
+	end
 end
-
--- cross referenceされているエントリーを追加
-BibTeX.cites = std_styles.CrossReference:modify_citations(BibTeX.cites,BibTeX)
--- 引用されている文献データをチェックし，必要ならばwarningを出す．
-BibTeX:output_citation_check(LBibTeX.LBibTeX.citation_check(BibTeX.cites))
-
--- ソート
-BibTeX.cites = std_styles.sort(BibTeX.cites)
-
--- 出力
-LBibTeX.Template.blockseparator = std_styles.blockseparator
-LBibTeX.Template.blocklast = std_styles.blocklast
-local f1 = LBibTeX.Template.make(std_styles.Templates,std_styles.Formatter)
-local f2 = LBibTeX.Template.make(
-	std_styles.CrossReference.Templates,
-	std_styles.Formatter)
-local f = std_styles.CrossReference:make_formatter(f1,f2)
-BibTeX:outputthebibliography(f)
--- end of file
+function BibTeX.formatter:title(c)
+	if c.fields["title"] == nil then return nil end
+	return LBibTeX.change_case(c.fields["title"],"t")
+end
 \end{lstlisting}
 
 このように，スタイルファイルは通常のLuaによるソースファイルです．
@@ -225,25 +241,9 @@ BibTeX.cites = std_styles.sort(BibTeX.cites,{"year","title","yomi"})
 もう少し柔軟な設定も可能ですので，lbt-style-std（節\ref{}）をご覧ください．
 
 \section{文字列}
-\LBibTeX は，Luaの通常の文字列では無く，内部ライブラリとしてICU4Luaを利用し，Unicodeにて文字を管理しています．
-文字列を作る際は以下のようにしてください．
-\begin{lstlisting}
-local icu = require "lbt-string"
-local U = icu.ustring
-local str = U"テストテキスト"
-\end{lstlisting}
-
-strはUnicodeで管理されたユーザ定義型の変数となります．
-通常の文字列に対して定義されている関数などは，この変数に対しても定義されています．
-例えば
-\begin{lstlisting}
-local str = U"テストテキスト"
-print(str:len()) -- 7
-\end{lstlisting}
-のようになります．
-
-\LBibTeX 内での関数などが「文字列」を引数としたら返したりしている場合は，このようにして定義された文字列です．
-ただし，多くの関数などではLua組み込みの文字列でも動作します．
+通常のLuaの文字列で，単なるバイト列です．
+\LuaTeX は標準でutf8用の関数をいくつか用意していますので，使うと良いでしょう．
+\LuaTeX のマニュアルをご覧ください．
 
 \section{リファレンス}
 全ては\verb|LBibTeX|以下に定義されています．

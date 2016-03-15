@@ -253,18 +253,18 @@ function LBibTeX.LBibTeX:outputcites(formatter)
 	end
 end
 
-local function get_sorting_formatter(formatters,target,cite)
+local function get_sorting_formatter(formatters,target)
 	return formatters[target] or formatters[""]
 end
 
 local function generate_sortfunction(targets,formatters,equal,lessthan)
 	return function(lhs,rhs)
 		for i,target in ipairs(targets) do
-			local l = get_sorting_formatter(formatters,target,lhs.type)
+			local l = get_sorting_formatter(formatters,target)
 			if l == nil then l = lhs.fields[target]
 			else l = l(formatters,lhs) end
 			if l == nil then goto continue end
-			local r = get_sorting_formatter(formatters,target,rhs.type)
+			local r = get_sorting_formatter(formatters,target)
 			if r == nil then r = rhs.fields[target]
 			else r = r(formatters,rhs) end
 			if r ~= nil then
@@ -275,10 +275,12 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 						print(r)
 					end
 					return lessthan(l,r)
+				else
 				end
 			end
 			::continue::
 		end
+--		print(lhs.key .. " and " .. rhs.key .. " are not distinguished.")
 		return false
 	end
 end
