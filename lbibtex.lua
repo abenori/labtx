@@ -5,10 +5,11 @@ require "lbt-core"
 option = (require "lbt-options").new()
 local mincrossrefs = 2
 option.options = {
-   {"min-crossrefs=","include item after NUMBER cross-refs; default 2",function(n) mincrossrefs = n end}
+   {"min-crossrefs=","include item after NUMBER cross-refs; default 2",function(n) mincrossrefs = n end,"number"}
 }
 
-local files = option:parse(arg)
+local files,msg = option:parse(arg)
+if files == nil then print("LBibTeX error: " .. msg) os.exit(1) end
 if #files == 0 then print("no input file") os.exit(1) end
 
 local first = true

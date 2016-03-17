@@ -1,7 +1,7 @@
 local option = {}
 
 -- options = {
---{"options=","explanation",do}
+--{"options=","explanation",do,"number"}
 --}
 function option.new()
 	local obj = {options = {}}
@@ -23,23 +23,29 @@ local function option_withoutarg(i,args,optname,action)
 	else return true,i end
 end
 
-local function option_witharg(i,args,optname,action)
+local function option_witharg(i,args,optname,action,argtype)
 	local r1,r2 = args[i]:find("^%-%-?" .. escape(optname))
 	if r1 == nil then return false,i end
 	local msg = nil
+	local actionarg = nil
 	if args[i]:len() == r2 then
-		if i == #args then return nil,"option " .. optname .. " needs an argument"
-		else
-			i = i + 1
-			msg = action(args[i])
-		end
+		i = i + 1
+		actionarg = args[i]
 	elseif args[i]:sub(r2 + 1,r2 + 1) == "=" then
-		msg = action(args[i]:sub(r2 + 2))
+		actionarg = args[i]:sub(r2 + 2)
 	else return false,i end
-	if msg ~= nil then return nil,mg
+	if actionarg == nil then return nil,"option " .. optname .. " needs an argument" end
+	if argtype ~= nil then
+		if argtype == "number" then
+			local a = tonumber(actionarg)
+			if a == nil then return nil,"option " .. optname .. " needs a number" end
+			actionarg = a
+		end
+	end
+	msg = action(actionarg)
+	if msg ~= nil then return nil,msg
 	else return true,i end
 end
-
 
 function option:parse(args)
 	local remains = {}
@@ -47,7 +53,7 @@ function option:parse(args)
 	while i <= #args do
 		local b = false
 		for dummy,opt in ipairs(self.options) do
-			if opt[1]:sub(-1,-1) == "=" then b,i = option_witharg(i,args,opt[1]:sub(1,-2),opt[3])
+			if opt[1]:sub(-1,-1) == "=" then b,i = option_witharg(i,args,opt[1]:sub(1,-2),opt[3],opt[4])
 			else b,i = option_withoutarg(i,args,opt[1],opt[3]) end
 			if b == nil then return nil,i end
 			if b == true then break end
