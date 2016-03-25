@@ -92,6 +92,7 @@ function LBibTeX.text_prefix(str,num)
 		end
 		if index > num then return fix_nest(r) end
 	end
+	return fix_nest(r)
 end
 
 -- とりあず普通にバイト数で数えるやつ
