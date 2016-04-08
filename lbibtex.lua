@@ -45,7 +45,12 @@ for i,f in ipairs(files) do
 
 	--local style_file_exec = loadfile(style,"t")
 	function style_file_exec()
+		local backup = {io = io,os = os}
+		io = nil
+		os = nil
 		dofile(style)
+		io = backup.io
+		os = backup.os
 	end
 	xpcall(style_file_exec,function(e) print(debug.traceback(tostring(e))) os.exit(2) end)
 	BibTeX:dispose()
