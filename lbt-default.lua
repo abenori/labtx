@@ -27,7 +27,6 @@ function default.sorting.formatters:name(c)
 	local s
 	if c.type == "book" or c.type == "inbook" then s = c.fields["author"] or c.fields["editor"]
 	elseif c.type == "proceedings" then s = c.fields["editor"]
-	elseif c.type == "manual" then s = c.fields["author"]
 	else s = c.fields["author"]
 	end
 	if s == nil then
@@ -50,7 +49,7 @@ function default.sorting.formatters:title(c)
 end
 function default.sorting.formatters:number(c) return c.number end
 
-default.sorting.targets = {"name","year","title"}
+default.sorting.targets = {}
 --biblatex
 -- datelabel = year
 -- labelalpha = false
@@ -107,7 +106,7 @@ function default.label.formatters:entry_key(c)
 end
 
 function default.label.formatters:year(c)
-	local year
+	local yearp
 	if c.fields["year"] == nil then year = ""
 	else year = purify(c.fields["year"]) end
 	return year:sub(-2,-1)
