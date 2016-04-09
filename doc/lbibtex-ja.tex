@@ -4,6 +4,7 @@
 \usepackage{url}
 \usepackage{listings}
 \usepackage[rgb,x11names]{xcolor}
+\usepackage{xparse}
 \lstdefinestyle{Lua}{%
   language=[5.2]Lua,
   basicstyle=\ttfamily,
@@ -17,12 +18,11 @@
 }
 \lstset{style=Lua,tabsize=2,showspaces=false}
 \DeclareRobustCommand{\LBibTeX}{L\BibTeX}
-\newcommand*{\luafunc}[1]{\texttt{#1}}
+\NewDocumentCommand{\luafunc}{v}{\texttt{#1}}
 \newcommand*{\luatable}[1]{\texttt{#1}}
-\newcommand*{\luastring}[1]{``\texttt{#1}''}
-\newcommand*{\luavar}[1]{\texttt{#1}}
-\newcommand{\LuaTeX}{Lua\TeX}
-
+\NewDocumentCommand{\luastring}{v}{``\texttt{#1}''}
+\NewDocumentCommand{\luavar}{v}{\texttt{#1}}
+\NewDocumentCommand{\luafunclist}{v}{\subsection{\texttt{#1}}}
 
 \title{\LBibTeX}
 \date{}
@@ -212,9 +212,9 @@ end
 \begin{itemize}
 \item \luastring{[A:B:C...:X]}は「ブロック」を表します．各ブロックには「セパレータ」\luastring{<sep>}と「終端文字列」\luastring{<last>}が設定されており，\luastring{A<sep>B<sep>C...<sep>X<last>}というように出力されます．ただし，たとえば\luastring{B}が空文字列の場合は，\luastring{A<sep>C...<sep>X<last>}というように出力されます．
 なお，このセパレータや終端文字列では，\luastring{.}が連続しないように処理がされます．ブロックはネストが可能です．
-\item \luastring{\$<A>}はフィールドAの出力を行います．Aがフィールドにない場合は空文字列になります．また\luastring{\$<A|B|...|X>}と続けることもできて，この場合はA,B,...,Xの中で最初に定義されているものが出力されます．
+\item \luastring{$<A>}はフィールドAの出力を行います．Aがフィールドにない場合は空文字列になります．また\luastring{$<A|B|...|X>}と続けることもできて，この場合はA,B,...,Xの中で最初に定義されているものが出力されます．
 \item \luastring{<A|B|C>}は，Bが空文字列ならば空文字列に，そうでないならば\luastring{ABC}という文字列になります．ネストが可能です．
-\item 特殊文字は\luastring{\%}でエスケープできます．
+\item 特殊文字は\luastring{%}でエスケープできます．
 \end{itemize}
 
 ブロックのセパレータと終端文字列は\luavar{BibTeX.blockseparator}で設定します．
@@ -228,7 +228,7 @@ BibTeX.blockseparator = {
 \end{lstlisting}
 という形です．
 
-\luastring{\$<A|B|...|X>}で出力される各種フィールドの出力は\luavar{BibTeX.formatters}により整形されます．
+\luastring{$<A|B|...|X>}で出力される各種フィールドの出力は\luavar{BibTeX.formatters}により整形されます．%$
 その実体は関数で，
 \begin{lstlisting}
 function BibTeX.formatters:field(c)
@@ -245,7 +245,7 @@ end
 \end{itemize}
 が入っています．
 上のauthorの例では\LBibTeX の提供する関数を使っています．
-\ref{*******}を参照してください．
+\ref{sec:関数}を参照してください．
 
 BibTeX.formattersの名前は実際のフィールド名である必要はありません．
 たとえば
@@ -256,25 +256,27 @@ function BibTeX.formatters:author_editor(c)
     else return c.fields["author"]
 end
 \end{lstlisting}
-とすると，\luastring{\$<author\_editor>}は「authorが定義されていればauthorフィールドに，そうでなければeditorフィールド」という扱いになります．（つまり\luastring{\$<author|editor>}と同等．）
+とすると，\luastring{$<author_editor>}%$
+は「authorが定義されていればauthorフィールドに，そうでなければeditorフィールド」という扱いになります．（つまり\luastring{$<author|editor>}と同等．）%$
 
 少し発展的な内容です．
 \begin{itemize}
 \item ブロックの定義において，\luastring{[A:@S<sep>B:C]}とすると，AとBの間のセパレータを\luastring{sep}に変更できます．
-\item \luastring{\$<A|(B)|C|...|X>}とすると，Bはフィールド名ではなく，テンプレートして解釈されます．たとえば，\luastring{\$<author|(<edited by |\$<editor>|.)>}とすると，
+\item \luastring{$<A|(B)|C|...|X>}とすると，Bはフィールド名ではなく，テンプレートして解釈されます．たとえば，\luastring{$<author|(<edited by |\$<editor>|.)>}とすると，
 \begin{itemize}
 \item authorが定義されていればauthorフィールドそのまま．
 \item authorが定義されていなく，editorが定義されていれば\luastring{edited by <editorフィールド>.}
 \item authorもeditorも定義されていなければ空文字列
 \end{itemize}
 が出力されます．
-\item formattersにもtemplatesのような書式が使えます．たとえば上の\luafunc{BibTeX.formatters:author\_editor}の例は
+\item formattersにもtemplatesのような書式が使えます．たとえば上の\luafunc{BibTeX.formatters:author_editor}の例は
 \begin{lstlisting}
 function BibTeX.formatters.author_editor = "$<author|editor>"
 \end{lstlisting}
 %$
 と書くこともできます．
-なお，ここでの\luastring{\$<A>}によるフィールド名の参照は，必ずフィールドの内容そのままとして解釈され，formattersによる整形は行われません．
+なお，ここでの\luastring{$<A>}%$
+によるフィールド名の参照は，必ずフィールドの内容そのままとして解釈され，formattersによる整形は行われません．
 \item formattersの関数の戻り値は原則文字列ですが，文字列の配列を返すこともできます．
 これはブロックとして扱われます．
 たとえば
@@ -349,7 +351,7 @@ inheritと同様\luastring{}は全ての項目を表します．
 その他以下の項目が設定できます．
 \begin{itemize}
 \item \luavar{BibTeX.crossref.mincrossrefs}：ここに設定されているだけのクロスリファレンスがあれば，エントリーが現在の参考文献一覧に追加されます．デフォルト2．
-\item \luavar{BibTeX.crossref.reference\_key\_name}：クロスリファレンスを表すフィールドのキー名です．デフォルト\luastring{crossref}．
+\item \luavar{BibTeX.crossref.reference_key_name}：クロスリファレンスを表すフィールドのキー名です．デフォルト\luastring{crossref}．
 \end{itemize}
 
 \subsection{ソート}
@@ -365,7 +367,9 @@ BibTeX.sorting.targets = {"name","title","year"}
 \item その他: author/key
 \end{itemize}
 のうち定義されている最初のものになります．
-このような設定は，BibTeX.sorting.formattersで設定可能です．
+\luavar{BibTeX.sorting.targets}には上の\luastring{name}とフィールド名の他，\luastring{entry_key}（エントリーキー），\luastring{label}（ラベル）が指定できます．
+
+実際に比較する値は，BibTeX.sorting.formattersで設定可能です．
 \begin{lstlisting}
 function BibTeX.sorting.formatters:name(c)
 ....
@@ -373,13 +377,25 @@ end
 \end{lstlisting}
 とすると，上のnameに対応する定義を上書きすることができます．
 
-実際の比較は，デフォルトでは小文字に変換した上での文字列の比較（UTF-8による辞書式順序）で行われます．
-これは
+比較するための関数は，
 \begin{itemize}
 \item 一致しているか否かを返す\luafunc{BibTeX.sorting.equal}
 \item $<$であるかを返す\luafunc{BibTeX.sorting.lessthan}
 \end{itemize}
 で設定できます．
+デフォルトでは
+\begin{lstlisting}
+local function purify(s)
+    return s:gsub("\\[a-zA-Z]*",""):gsub("[ -/:-@%[-`{-~]","")
+end
+function BibTeX.sorting.lessthan(a,b)
+    return unicode.utf8.lower(purify(a)) < unicode.utf8.lower(purify(b))
+end
+function BibTeX.sorting.equal(a,b)
+    return unicode.utf8.lower(purify(a)) == unicode.utf8.lower(purify(b))
+end
+\end{lstlisting}
+と定義されています．
 
 \subsection{ラベル}
 thebibliography環境における
@@ -405,6 +421,149 @@ BibTeX.label.make = nil
 BibTeX:outputthebibliography()
 \end{lstlisting}
 とすることで，\url{.bbl}ファイルが出力されます．
+
+\section{関数}\label{sec:関数}
+有用そうな関数群やオリジナルの\BibTeX に存在していた関数が，\luavar{LBibTeX}以下に定義されています．
+\luafunclist{LBibTeX.text_prefix(str,num)}
+\luavar{str}の先頭\luavar{num}バイトを返します．
+ただし，文字を途中で切ることはなく，またコントロールシークエンス等や引数はバイト数に加算されません．
+たとえば，
+\begin{lstlisting}
+LBibTeX.text_prefix("aあい",2)
+LBibTeX.text_prefix("あいう",5)
+\end{lstlisting}
+はそれぞれ\luastring{aあ}，\luastring{あい}を返します．\footnote{内部コードはUTF-8なので，\luastring{あ}や\luastring{い}は3byteです．}
+
+\luafunclist{LBibTeX.text_length(str)}
+strのバイト数を返しますが，コントロールシークエンス等や引数は加算されません．
+
+\luafunclist{LBibTeX.string_split(str,func)}
+検索関数\luavar{func}により\luavar{str}を分割して返します．
+戻り値は二つの配列で，一つ目の配列には分割された文字列，二つ目の配列には分割文字列が入ります．
+たとえば
+\begin{lstlisting}
+LBibTeX.string_split("aXbYc",function(s) return s:find("[XY]") end)
+\end{lstlisting}
+は
+\begin{lstlisting}
+{"a","b","c"},{"X","Y"}
+\end{lstlisting}
+を返します．
+
+
+\luafunclist{LBibTeX.change_case(str,format)}
+大文字小文字の変換を行います．ただし，中括弧の中は処理されません．
+\luavar{format}は\luastring{t}，\luastring{u}，\luastring{l}のどれかで，
+\begin{itemize}
+\item \luastring{u}，\luastring{l}はそれぞれ大文字，小文字への変換を表す．
+\item \luastring{t}は小文字への変換を行うが，一文字目及び\luastring{: *}で表される文字の次の文字は変換されない．
+\end{itemize}
+
+
+\luafunclist{LBibTeX.split_names(names[,seps])}
+複数名の名前からなる文字列から，各人の名前の入った配列を得ます．
+人と人との区切りを配列\luavar{seps}で与えることができます．（配列中のいずれかにマッチした部分で区切られる．）
+\luavar{seps}のデフォルトは\verb|{"[aA][nN][dD]"}|です．
+
+\luafunclist{LBibTeX.get_name_parts(names)}
+名前からfirst name，last name，von part，jr partの四つの部分を抽出します．
+戻り値は
+\begin{lstlisting}
+{first = <first part>, last = <last part>, von = <von part>, jr = <jr part>}
+\end{lstlisting}
+で，各々の部分は
+\begin{lstlisting}
+{parts = <array of name>, seps = <separator of names>}
+\end{lstlisting}
+です．%\verb|<array of name>|は各部分の名前が配列で，\verb|<separator of names>|はnames内で使われていた区切り記号を表します．
+例えばvon-von Last Last, First, jrに対しては，次のように返ります．
+\begin{lstlisting}
+{
+	first = {parts = {"First"}, seps = {}},
+	last = {parts = {"Last","Last"}, seps = {" "}},
+	von = {parts = {"von", "von"}, seps = {"-"}},
+	jr = {pars = {"jr"}, seps = {}}
+}
+\end{lstlisting}
+
+この関数は，次のルールに基づき名前を分解します．
+\begin{enumerate}
+\item \luastring{[ ,~\t%-]+}に該当するパターンで区切り，配列を生成する．
+\item 1で区切られた際に用いられた区切り文字のうち，最初の一文字がカンマ「,」のものの数を数える．この数に基づき，次の三つのパターンのどれかと見なす．
+\begin{enumerate}
+\item カンマがない：First von Lastのパターン．頭から見てvonと見なされるパターンの前までがFirst，後ろから見てvonと見なされるパターンの後ろまでがLast．vonがない場合は1で区切られたうちの最後の一つのみがLast．（ただし，区切り文字が\verb|"-"|のものはまとめて考える．例えば\luastring{First Last Last}のLastは\luastring{Last}であるが，\luastring{First Last-Last}ならば\luastring{Last-Last}である．）
+\item カンマが一つ：von Last, Firstのパターン．von LastからLastを抜き出す処理は(a)と同じ．
+\item カンマが二つ：von Last, Jr, Firstのパターン．von LastからLastを抜き出す処理は(a)と同じ．
+\end{enumerate}
+\item 2における「vonと見なされるパターン」とは，（基本的には）\footnote{実際には中括弧内や，コントロールシークエンスで定義されたアクセントなども考慮に入れる．}最初に現れたアルファベットが小文字であるもののことである．
+\end{enumerate}
+
+
+\luafunclist{LBibTeX.forat_name_by_parts(nameparts,format)}
+\luavar{format}にて指定された書式に基づき，名前の整形を行います．
+\luavar{nameparts}は\luafunc{LBibTeX.get_name_parts}で得られる戻り値と同じかたちで与えます．
+\luavar{format}で与える書式は次の形です．
+\begin{quote}
+\begin{verbatim}
+<str1>{<before1><name1><after1>}<str2>{<before2><name2><after2>}...
+\end{verbatim}
+\end{quote}
+\begin{itemize}
+\item \verb|<str1>|はそのまま出力される．
+\item \verb|<name1>|は\luastring{l}，\luastring{ll}，\luastring{f}，\luastring{ff}，\luastring{v}，\luastring{vv}，\luastring{j}，\luastring{jj}の何れか．Last name，First name，von part，jr partに対応し，二つ続いているものは名前全体を，そうでないものは短縮形を表す．
+\item \verb|<before1>|はそのまま出力される．ただし\verb|<name1>|に対応する部分がない場合，出力されない．
+\item \verb|<after1>|は\verb|{<sep1>}<after1_>|か\verb|<after1_>|（中括弧なし）の何れかである．\verb|<sep1>|は\verb|<name1>|の各部分をつなぐ文字として使われ，\verb|<after1_>|は次の部分とのつなぐ文字として使われる．\verb|<sep1>|が省略された場合や，\luastring{~}であった場合は，空白（\luastring{ }か\luastring{~}）が状況に応じて使われる．もし常に\luastring{~}を出力したい場合は，\luastring{~~}を指定する．
+\item \verb|<str2>|等も同様．
+\end{itemize}
+
+\luafunclist{LBibTeX.format_name(name,format)}
+\BibTeX のformat.names\$と似た関数です．
+中身は
+\begin{lstlisting}
+return LBibTeX.forat_name_by_parts(LBibTeX.get_name_parts(name),format)
+\end{lstlisting}
+です．
+
+\luafunclist{LBibTeX.make_name_list(namearray, format, separray[, etalstr])}
+複数人の名前の配列から文字列を作ります．
+\luavar{separray}の長さを\luavar{k}，\luavar{namearray}の長さを\luavar{n}とすると，
+\begin{quote}
+\begin{verbatim}
+namearray[1]separray[1]namaearray[2]separray[2] .... 
+namearray[n - k + 1]separray[2] ...
+namearray[n - 1]separray[k]namearray[n]
+\end{verbatim}
+\end{quote}
+という文字列を生成します．（実際には改行無し．）
+ただし，\luavar{namearray}の各項は\luavar{format}に従い整形され（書式は\luafunc{LBibTeX.format_name_by_parts}と同様），またもし\luavar{namearray[n]}が\luastring{others}の場合は，\luavar{namearray[n]}は\luavar{etalstr}に置き換えられます．
+デフォルトでは\luavar{etalstr}は空文字列です．
+
+\luafunclist{LBibTeX.remove_TeX_cs(s)}
+\luavar{s}から\TeX のコントロールシークエンスを取り除いた文字列を得ます．
+
+%\luafunclist{LBibTeX.citation_check(citations,required)}
+%\luavar{citations}に与えられた文献情報一覧を，\luavar{required}に従いチェックします．
+%例えば
+%\begin{lstlisting}
+%required["article" ] = {required = {"author", "title"}, optional = {"volume", "number"}}
+%\end{lstlisting}
+%であった場合，articleにおいては，author，titleフィールドは必須であり，volume，numberフィールドは任意であることを意味します．（任意フィールドは今のところ無視されています．）
+%また
+%\begin{lstlisting}
+%required["book" ] = {required = {{"author","editor"}, "title"}}
+%\end{lstlisting}
+%のようになっていた場合，bookにおいてはauthor，editorの何れかとtitleが必須であることを意味します．
+%
+%\luavar{citations}には文献情報からなるテーブルを与えます．
+%戻り値は，例えば次のような形をしています．
+%\begin{lstlisting}
+%{key1 = {{"author","editor"}, "title"}, key2 = {"year"}}
+%\end{lstlisting}
+%key1には「authorまたはeditor」とtitleが，key2にはyearが欠落していることを示します．
+%
+%\luafunclist{LBibTeX.LBibTeX:output_citation_check(citation_check)}
+%（これはLBibTeX以下に直接定義されているわけではなく，LBibTeX.LBibTeX以下であることに注意してください．）
+%\luafunc{LBibTeX.citation_check}での出力を受けて警告を表示します．
 
 
 %

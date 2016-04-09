@@ -8,7 +8,7 @@ local default = {}
 -- default.sorting.targets
 -- を上書きで微調整する
 
-local function purify(s) return s:gsub("\\[a-zA-Z]*",""):gsub("[^~ a-zA-Z0-9-]","") end
+local function purify(s) return s:gsub("\\[a-zA-Z]*",""):gsub("[ -/:-@%[-`{-~]","") end
 default.sorting = {}
 default.sorting.lessthan = function(a,b) return unicode.utf8.lower(purify(a)) < unicode.utf8.lower(purify(b)) end
 default.sorting.equal = function(a,b) return unicode.utf8.lower(purify(a)) == unicode.utf8.lower(purify(b)) end
