@@ -17,7 +17,10 @@ function split_str_asin_bibtex(str)
 			return str:sub(start),1
 		elseif r == byteindex then
 			local r1,r2 = str:find("%b{}",byteindex)
-			if r2 == nil then r2 = str:len() end
+			if r1 == nil then
+				r1 = byteindex
+				r2 = str:len()
+			end
 			byteindex = r2 + 1
 			if str:sub(r1 + 1,r1 + 1) == "\\" then
 				return str:sub(start,r2),2

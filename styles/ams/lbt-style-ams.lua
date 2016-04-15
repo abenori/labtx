@@ -19,6 +19,16 @@ ams_styles.macros["oct"] = "October"
 ams_styles.macros["nov"] = "November"
 ams_styles.macros["dec"] = "December"
 
+ams_styles.preamble =
+"\\providecommand{\\bysame}{\\leavevmode\\hbox to3em{\\hrulefill}\\thinspace}\n" .. 
+"\\providecommand{\\MR}{\\relax\\ifhmode\\unskip\\space\\fi MR }\n" ..
+"% \\MRhref is called by the amsart/book/proc definition of \\MR.\n" ..
+"\\providecommand{\\MRhref}[2]{%\n" ..
+"  \\href{http://www.ams.org/mathscinet-getitem?mr=#1}{#2}\n" ..
+"}\n" ..
+"\\providecommand{\\href}[2]{#2}\n"
+
+
 -- templates
 
 ams_styles.blockseparator = {{", ", ". "}}

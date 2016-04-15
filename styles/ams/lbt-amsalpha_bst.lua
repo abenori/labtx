@@ -2,6 +2,7 @@ ams_styles = require "lbt-style-ams"
 
 LBibTeX.debug = false
 
+BibTeX.preamble = BibTeX.preamble .. ams_styles.preamble
 BibTeX.macros = ams_styles.macros
 BibTeX.crossref = ams_styles.crossref
 BibTeX.blockseparator = ams_styles.blockseparator
