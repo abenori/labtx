@@ -6,7 +6,7 @@ if LBibTeX.LBibTeX == nil then LBibTeX.LBibTeX = {} end
 -- {}内，頭の文字はcsから始まる: 2
 -- {}内，頭の文字は普通の文字から: 3
 -- とりあえずこれで区切って返すのを考えてみる．
-function split_str_asin_bibtex(str)
+local function split_str_asin_bibtex(str)
 	local byteindex = 1
 	return function()
 		if byteindex > str:len() then return nil end
@@ -41,39 +41,12 @@ local function fix_nest(str)
 		elseif c == "}" and nest > 0 then nest = nest - 1
 		end
 	end
-	r = str
+	local r = str
 	while nest > 0 do
 		r = r .. "}"
 		nest = nest - 1
 	end
 	return r
-end
-
--- strが特殊文字から始まっているかチェックする
--- 始まっていた場合，二つ目の戻り値で特殊文字のバイト数を返す．
--- \ss -> true,3
-local function is_special_string(str)
-	if str:sub(1,1) ~= "\\" then return false end
-	local special_cs = {"\\ss","\\i","\\j","\\oe","\\aa","\\o","\\l"}
-	for n,s in special_cs do
-		if str:sub(1,s:len()) == s then return true,s:len() end
-	end
---[[
-	local t = str:sub(2,2)
-	if t == "`" or t == "'" or t == "^" or t == "\"" or t == "~" or t == "=" or t == "." or t == "u" or t == "v" or t == "H" or t == "t" or t == "c" or t == "d" or t == "b" then
-		if str:sub(3,3) == "{" then
-			local r1,r2 = str:find("%b{}")
-			if r1 == nil then return 
-			return true,r2
-		else return true,3
-	end
-]]
-	return false
-end
-
-
-local function first_utf8_char(str)
-	return string.utfcharacters(str)()
 end
 
 -- not compatible with text.prefix$ (at least at this point)
@@ -117,7 +90,7 @@ function LBibTeX.string_split(str,func)
 	local separray = {}
 	local r = 1
 	while true do
-		local r1,r2,s = func(str:sub(r))
+		local r1,r2 = func(str:sub(r))
 		if r1 == nil then
 			table.insert(array,str:sub(r))
 			return array,separray
@@ -151,7 +124,7 @@ local function getBracketInside(str,pos)
 	while true do
 		local p = findUnEscapedBracket(str,r)
 		if p == nil then return nil end
-		k = str:sub(p,p)
+		local k = str:sub(p,p)
 		if k == "{" then
 			if nest == 0 then start = p end
 			nest = nest + 1
@@ -236,10 +209,10 @@ local function Isvon(name)
 		return r == name:find("[a-z]")
 	else
 		b = b + 1
-		p1,p2 = name:find("\\[a-zA-Z]+",b)
+		local p1,p2 = name:find("\\[a-zA-Z]+",b)
 		if b ~= p1 then return false
 		else
-			k = name:sub(p1 + 1,p2)
+			local k = name:sub(p1 + 1,p2)
 			return (k == "i" or k == "j" or k == "oe" or k == "aa" or k == "o" or k == "l" or k == "ss")
 		end
 	end
@@ -258,6 +231,7 @@ end
 -- return von,last
 local function SplitvonLast(array,separray,from,to)
 	local last = {}
+	local von = {}
 	last.parts = {} last.seps = {}
 	local von_end = from - 1
 	if #array == 0 then return von,last end
@@ -270,7 +244,7 @@ local function SplitvonLast(array,separray,from,to)
 		table.insert(last.seps,1,separray[i])
 		table.insert(last.parts,1,array[i])
 	end
-	local von = InsertFromseparray(array,separray,from,von_end)
+	von = InsertFromseparray(array,separray,from,von_end)
 	return von,last
 end
 
@@ -429,22 +403,6 @@ function LBibTeX.format_name(name,format)
 	return LBibTeX.format_name_by_parts(LBibTeX.get_name_parts(name),format)
 end
 
-local function apply_function_to_nonnested_str(str,func,pos)
-	local nest = 0
-	local p = pos
-	if p == nil then p = 1 end
-	local r = str:sub(1,p-1)	
-	while true do
-		local p1,p2 = getBracketInside(str,p)
-		if p1 == nil then
-			r = r .. func(str:sub(p))
-			return r
-		end
-		r = r .. func(str:sub(p,p1 - 1)) .. str:sub(p1,p2)
-		p = p2 + 1
-	end
-end
-
 -- str "t" change.case$ の結果
 -- A {\TeX B} --> A {\TeX b}
 -- A {X \TeX B} --> A {X \TeX B}
@@ -584,8 +542,7 @@ function LBibTeX.citation_check(citations,required)
 					if r[v.key] == nil then r[v.key] = {} end
 					local req_clone = {}
 					for j = 1,#req do
-						local r = req[j]
-						table.insert(req_clone,r)
+						table.insert(req_clone,req[j])
 					end
 					table.insert(r[v.key],req_clone)
 				end
@@ -638,8 +595,8 @@ local function merge_sort(list,from,to,comp)
 			end
 			i = i + 1
 		end
-		for i = from,to do
-			list[i] = tmplist[i - from + 1]
+		for j = from,to do
+			list[j] = tmplist[j - from + 1]
 		end
 	elseif to - from == 1 then
 		if comp(list[to],list[from]) then

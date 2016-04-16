@@ -16,7 +16,7 @@ end
 -- i: 引数を食ったら一つ増やす
 -- b: true：オプションとして処理した，false：オプションじゃない，nil：失敗，iにメッセージ
 local function option_withoutarg(i,args,optname,action)
-	local r1,r2,minus = args[i]:find("^%-%-?" .. escape(optname) .. "(%-?)$")
+	local r1,dummy,minus = args[i]:find("^%-%-?" .. escape(optname) .. "(%-?)$")
 	if r1 == nil then return false,i end
 	local msg = action(minus ~= "-")
 	if msg ~= nil then return nil,msg
@@ -26,8 +26,8 @@ end
 local function option_witharg(i,args,optname,action,argtype)
 	local r1,r2 = args[i]:find("^%-%-?" .. escape(optname))
 	if r1 == nil then return false,i end
-	local msg = nil
-	local actionarg = nil
+	local msg
+	local actionarg
 	if args[i]:len() == r2 then
 		i = i + 1
 		actionarg = args[i]
@@ -59,7 +59,6 @@ function option:parse(args)
 			if b == true then break end
 		end
 		if b == false then table.insert(remains,args[i]) end
-		::continue::
 		i = i + 1
 	end
 	return remains

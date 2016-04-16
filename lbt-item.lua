@@ -61,7 +61,7 @@ end
 function LBibTeX.block:tostring()
 	local r = ""
 	for i = 1,#self.contents do
-		local sep = ""
+		local sep
 		if self.separators[i] == nil then sep = get_separator(self.defaultseparator,i - 1,#self.contents)
 		else sep = self.separators[i] end
 		sep = tostring(sep);

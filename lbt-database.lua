@@ -35,26 +35,26 @@ local nil_data = {}
 
 local function fields_index(table,key)
 	key = unicode.utf8.lower(key)
-	meta = getmetatable(table)
+	local meta = getmetatable(table)
 	local val = meta.__extra_fields[key]
 	if val == nil_data then return nil end
 	if val == nil then val = meta.__real_fields[key] end
 	if val == nil then return nil end
 	if meta.__conversions == nil then return val end
-	for i,conv in ipairs(meta.__conversions) do
+	for dummy,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
 	return val
 end
 
 local function fields_newindex(table,key,value)
-	meta = getmetatable(table)
+	local meta = getmetatable(table)
 	if value == nil then meta.__extra_fields[key] = nil_data
 	else meta.__extra_fields[key] = value end
 end
 	
 local function fields_enum(table,index)
-	meta = getmetatable(table)
+	local meta = getmetatable(table)
 	local val,newindex
 	if index == nil or meta.__extra_fields[index] ~= nil then
 		newindex = index
@@ -70,7 +70,7 @@ local function fields_enum(table,index)
 	end
 	if val == nil then return nil,nil end
 	if meta.__conversions == nil then return newindex,val end
-	for i,conv in ipairs(meta.__conversions) do
+	for dummy,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
 	return newindex,val
@@ -90,7 +90,7 @@ function Citation.new(db,data)
 	obj.fields = {}
 	local fields = data.fields
 	if fields == nil then fields = {} end
-	extra_fields = data.extra_fields
+	local extra_fields = data.extra_fields
 	if extra_fields == nil then extra_fields = {} end
 --	if obj.extra_data == nil then obj.extra_data = {} end
 	setmetatable(obj.fields,{
@@ -154,7 +154,7 @@ function LBibTeX.Database.new()
 end
 
 function LBibTeX.Database:add_db(data)
-	for k,v in pairs(data) do
+	for dummy,v in pairs(data) do
 		self.db[v.key] = Citation.new(self,v)
 	end
 end
@@ -181,7 +181,7 @@ local function split_strings_nonestsep(str,sep)
 			startstr = p2 + 1
 			p = p2 + 1
 		else
-			k = str:sub(p1,p1)
+			local k = str:sub(p1,p1)
 			if nest == 0 and k == "\"" then inquote = not inquote
 			elseif not inquote and k == "{" then nest = nest + 1
 			elseif not inquote and k == "}" then nest = nest - 1
@@ -189,7 +189,6 @@ local function split_strings_nonestsep(str,sep)
 			p = p1 + 1
 		end
 	end
-	return a
 end
 
 local function del_dquote_bracket(str)
@@ -226,8 +225,8 @@ local buffer = {}
 function buffer.new(file,enc)
 	if enc == nil then enc = "UTF-8" end
 	local f,m = io.open(file,"r",enc)
-	if f == nil then return nil end
-	obj = {fp = f,linenum = 0}
+	if f == nil then return nil,m end
+	local obj = {fp = f,linenum = 0}
 	return setmetatable(obj,{__index = buffer})
 end
 
@@ -305,7 +304,6 @@ local function get_preamble(line,buf,endbra)
 	if endbra == ")" then ptn = "\\*[{})]"
 	else ptn = "\\*[{}]" end
 	local rv = ""
-	local startline = buf.linenum
 	local nest = 0
 	repeat
 		local r = 1
@@ -327,7 +325,7 @@ local function get_preamble(line,buf,endbra)
 				rv = rv .. line .. "\n"
 				break
 			end
-			k = line:sub(q,q)
+			local k = line:sub(q,q)
 			if k == endbra and nest == 0 then
 				rv = rv .. line:sub(1,q - 1)
 				line = line:sub(q + 1)
@@ -344,12 +342,12 @@ end
 
 -- return db,preamble,macros
 local function read_database(file)
-	buf = buffer.new(file)
+	local buf = buffer.new(file)
 	if buf == nil then return nil,nil,nil end
 	local preamble = ""
 	local macros = {}
 	local db = {}
-	line = buf:read()
+	local line = buf:read()
 	local number = 1
 	while line ~= nil do
 		local r = nil
@@ -362,12 +360,11 @@ local function read_database(file)
 		if line == nil then break end
 		line = line:sub(r + 1)
 		-- 区切り文字を探す．
-		local type = nil
+		local type
 		local endbra
-		local startline = buf.linenum
 		r = 1
 		while true do
-			local r = line:find("[{(]",r)
+			r = line:find("[{(]",r)
 			if r ~= nil then
 				local k = line:sub(r,r)
 				type = trim(line:sub(1,r - 1)):lower()
@@ -380,15 +377,17 @@ local function read_database(file)
 			if line == nil then return nil end
 		end
 
+		local pre
 		if type == "preamble" then
-			local pre,line = get_preamble(line,buf,endbra)
+			pre,line = get_preamble(line,buf,endbra)
 			if pre == nil then return nil,"searching preamble.. " .. line end
 			preamble = preamble .. apply_macro_to_str(pre,{})
 		elseif type == "comment" then
-			local pre,line = get_preamble(line,buf,endbra)
+			pre,line = get_preamble(line,buf,endbra)
 			if pre == nil then return nil,"searching comment.. " .. line end
 		else
-			local field,s,line = get_entry(line,buf,endbra)
+			local field,s
+			field,s,line = get_entry(line,buf,endbra)
 			if field == nil then break end
 			local key = trim(field)
 			if type == "string" then
@@ -401,12 +400,11 @@ local function read_database(file)
 					if k ~= "" then macros[k:lower()] = del_dquote_bracket(v) end
 				end
 			else
-				c = {}
+				local c = {}
 				c.fields = {}
 				c.extra_data = {}
 				c.number = number
 				number = number + 1
-				local s,field
 				repeat
 					field,s,line = get_entry(line,buf,endbra)
 					if field == nil then return nil,"searching entry.. " .. s end
@@ -450,7 +448,7 @@ function LBibTeX.BibDatabase:read(file)
 	if c == nil then return false end
 	self.preamble = self.preamble .. p
 	self.macros_from_db[file] = m
-	for k,v in pairs(c) do
+	for dummy,v in pairs(c) do
 		v.extra_data.bib = file
 	end
 	self:add_db(c)

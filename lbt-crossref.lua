@@ -43,14 +43,14 @@ end
 -- table[source_type][target_type][source_key] = {target_keyの配列}という形にしておく．
 local function modify_table(oldtable)
 	local t = {}
-	for source_type,v in pairs(oldtable) do
+	for source_type,vv in pairs(oldtable) do
 		if type(source_type) == "string" then source_type = source_type:lower() end
 		t[source_type] = {}
-		for target_type,v in pairs(v) do
+		for target_type,v in pairs(vv) do
 			if type(target_type) == "string" then target_type = target_type:lower() end
 			t[source_type][target_type] = {}
 			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
-			for i,array in ipairs(v) do
+			for dummy,array in ipairs(v) do
 				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
 				local source_keys = array[1]
 				local target_keys = array[2]
@@ -58,16 +58,16 @@ local function modify_table(oldtable)
 				if type(target_keys) ~= "table" then target_keys = {target_keys} end
 				local extra = nil
 				if #array > 2 then extra = {table.unpack(array,3)} end
-				for i,from in ipairs(source_keys) do
+				for dummy,from in ipairs(source_keys) do
 					if type(from) == "string" then from = from:lower() end
 					if t[source_type][source_type][from] == nil then
 						t[source_type][source_type][from] = {}
 					end
-					for j,to in pairs(target_keys) do
+					for dummy,to in pairs(target_keys) do
 						to = to:lower()
 						if extra ~= nil then 
 							to = {to}
-							for n,ext in ipairs(extra) do table.insert(to,ext) end
+							for dummy,ext in ipairs(extra) do table.insert(to,ext) end
 						end
 						table.insert(t[source_type][source_type][from],to)
 					end
@@ -76,17 +76,6 @@ local function modify_table(oldtable)
 		end
 	end
 	return t
-end
-
--- aとbを結合し，ダブリを排除した結果を返す．
--- aは破壊される可能性がある
-local function concat_array(a,b)
-	if a == nil then return b end
-	if b == nil then return a end
-	for i = 1,#b do
-		table.insert(a,b[i])
-	end
-	return a
 end
 
 -- 各々のtable1[k]とtable2[k]を結合する（どちらも配列が入っているとする）
@@ -108,7 +97,7 @@ local function concat_array_in_table(table1,table2)
 				t[k][i] = x
 			end
 		else
-			for i,x in ipairs(v) do
+			for dummy,x in ipairs(v) do
 				table.insert(t[k],x)
 			end
 		end
@@ -160,14 +149,14 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 
 	for parent_key,child_keys in pairs(reffered) do
 		local parent = db.db[parent_key]
-		for i,child_number in ipairs(child_keys) do
+		for dummy,child_number in ipairs(child_keys) do
 			local child = cites[child_number]
 			local inherit = get_fields(inherit_table,parent.type,child.type)
 			local override = get_fields(override_table,parent.type,child.type)
 --			print(table.unpack(override[all_type]))
 			
 			local allwrite = (self.all[all_type][all_type] == true or self.all[all_type][child.type] == true or self.all[parent.type][all_type] == true or self.all[parent.type][child.type] == true)
-			for key,value in pairs(parent.fields) do
+			for key,dummy in pairs(parent.fields) do
 				local target_field_keys = inherit[key]
 				if target_field_keys == nil then target_field_keys = inherit[all_type] end
 				if target_field_keys == nil then
@@ -180,7 +169,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 					-- override[key]の中身は{{"title",true},...}
 					elseif override[key] ~= nil then
 						for dummy,x in ipairs(override[key]) do
-							if x[1] == al_type or x[1] == target_field_key then 
+							if x[1] == all_type or x[1] == target_field_key then 
 								isoverride = x[2]
 								break
 							end
@@ -203,7 +192,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 		end
 		if #child_keys >= self.mincrossrefs then
 			local insert = true
-			for i,c in ipairs(cites) do
+			for dummy,c in ipairs(cites) do
 				if c.key == parent.key then
 					insert = false
 					break
@@ -211,12 +200,11 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 			end
 			if insert == true then table.insert(cites,parent:clone()) end
 		end
-		::continue::
 	end
 	-- 引用されていない文献のcrossrefは消す
-	for i,c in ipairs(cites) do
+	for dummy,c in ipairs(cites) do
 		local del_crossref = true
-		for j,cc in ipairs(cites) do
+		for dummy,cc in ipairs(cites) do
 			if c.fields[self.reference_key_name] ~= nil and cc.key == unicode.utf8.lower(c.fields[self.reference_key_name]) then
 				del_crossref = false
 				break

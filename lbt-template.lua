@@ -141,8 +141,6 @@ end
 --	end
 --end
 
-local MakeTemplateImpl
-
 -- [A:B:C:...]
 function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 	local f = {}
@@ -176,7 +174,7 @@ function LBibTeX.Template:MakeBlockFunction(array,funcs,blocknest)
 end
 
 -- <A|B|C>
-function LBibTeX.Template:MakeStringFunction(array,funcs,bocknest)
+function LBibTeX.Template:MakeStringFunction(array,funcs,blocknest)
 	local f1 = self:MakeTemplateImpl(array[1],funcs,blocknest)
 	local f2 = self:MakeTemplateImpl(array[2],funcs,blocknest)
 	local f3 = self:MakeTemplateImpl(array[3],funcs,blocknest)
@@ -196,13 +194,13 @@ function LBibTeX.Template:MakeStringFunction(array,funcs,bocknest)
 end
 
 -- $<A|B|C|...>
-function LBibTeX.Template:MakeFormatFunction(array,funcs)
+function LBibTeX.Template:MakeFormatFunction(array,funcs,blocknest)
 	local ff = {}
 	for i = 1,#array do
 		if array[i]:sub(1,1) == "(" and array[i]:sub(-1) == ")" then
 			local f = self:MakeTemplateImpl(array[i]:sub(2,-2),funcs,blocknest)
 			if f == nil then return nil end
-			ff[i] = function(funcs,c)
+			ff[i] = function(dummy,c)
 				return f(c)
 			end
 		else
@@ -210,7 +208,7 @@ function LBibTeX.Template:MakeFormatFunction(array,funcs)
 			if array[i]:sub(-2,-1) == "%)" then array[i] = array[i]:sub(1,-3) .. ")" end
 			local f = funcs[array[i]]
 			if type(f) ~= "function" then
-				ff[i] = function(f,c)
+				ff[i] = function(dummy,c)
 					local r = c.fields[array[i]]
 					if r == nil then return nil
 					else return tostring(r) end
@@ -235,14 +233,14 @@ function LBibTeX.Template:MakeFormatFunction(array,funcs)
 	end
 end
 
-function UnEscape(str)
+local function UnEscape(str)
 	return str:gsub("%%(.)","%1")
 end
 
 LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 	local bra = findUnescaped(templ,"%[<",1)
 	if bra == nil then
-		return function(c) return string_to_array(UnEscape(templ)) end
+		return function(dummy) return string_to_array(UnEscape(templ)) end
 	end
 	if templ:sub(bra,bra) == "[" then
 		-- [A:B:...]
@@ -291,7 +289,7 @@ LBibTeX.Template.MakeTemplateImpl = function(self,templ,funcs,blocknest)
 				LBibTeX.Template.LastMsg = "template error in " .. templ
 				return nil
 			end
-			local f1 = self:MakeFormatFunction(array,funcs)
+			local f1 = self:MakeFormatFunction(array,funcs,blocknest)
 			local f2 = self:MakeTemplateImpl(templ:sub(r),funcs,blocknest)
 			if f1 == nil then 
 				LBibTeX.Template.LastMsg = "template error in " .. table.concat(array," ")
@@ -356,7 +354,6 @@ function LBibTeX.Template:make(templs,funcs)
 	end
 	local f = {}
 	local ff
-	local msg
 	local funcs_f,msg = self:modify_functions(funcs)
 	if funcs_f == nil then return nil,msg end
 	for k,v in pairs(templs) do

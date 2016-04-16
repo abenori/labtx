@@ -21,7 +21,7 @@ local function remove_article(s)
 	return s
 end
 
-function default.sorting.formatters:name_format(c) return "{vv{ } }{ll{ }}{  ff{ }}{  jj{ }}" end
+function default.sorting.formatters:name_format(dummy) return "{vv{ } }{ll{ }}{  ff{ }}{  jj{ }}" end
 
 function default.sorting.formatters:name(c)
 	local s
@@ -43,7 +43,7 @@ end
 function default.sorting.formatters:entry_key(c) return c.key end
 function default.sorting.formatters:label(c) return c.label end
 function default.sorting.formatters:title(c)
-	title = c.fields["title"]
+	local title = c.fields["title"]
 	if title ~= nil then return remove_article(title) end
 	return nil	
 end
@@ -73,7 +73,7 @@ local function makelabelfromname(s)
 	local label = ""
 	if #a > 4 then label = "{\\etalchar{+}}" end
 	local n = #a
-	for i = 1,n - 5 do table.remove(a) end
+	for dummy = 1,n - 5 do table.remove(a) end
 	label = LBibTeX.make_name_list(a,"{v{}}{l{}}",{""},"{\\etalchar{+}}") .. label
 	if #a > 1 then return label
 	else
@@ -106,7 +106,7 @@ function default.label.formatters:entry_key(c)
 end
 
 function default.label.formatters:year(c)
-	local yearp
+	local year
 	if c.fields["year"] == nil then year = ""
 	else year = purify(c.fields["year"]) end
 	return year:sub(-2,-1)
@@ -132,7 +132,6 @@ end
 function default.label:add_suffix(cites)
 	if self.suffix == nil then return cites end
 	local changed = false
-	local lastname = nil
 	local lastindex = 0
 	for i = 1,#cites - 1 do
 		if purify(cites[i].label) == purify(cites[i + 1].label) then

@@ -2,7 +2,7 @@ local start_time = os.clock()
 kpse.set_program_name("texlua","bibtex")
 require "lbt-core"
 
-option = (require "lbt-options").new()
+local option = (require "lbt-options").new()
 local mincrossrefs = 2
 option.options = {
    {"min-crossrefs=","include item after NUMBER cross-refs; default 2",function(n) mincrossrefs = n end,"number"}
@@ -13,7 +13,7 @@ if files == nil then print("LBibTeX error: " .. msg) os.exit(1) end
 if #files == 0 then print("no input file") os.exit(1) end
 
 local first = true
-for i,f in ipairs(files) do
+for dummy,f in ipairs(files) do
 	if f:sub(1,1) == "-" then goto continue end
 	if first == true then first = false
 	else print("") end
@@ -32,11 +32,12 @@ for i,f in ipairs(files) do
 
 	BibTeX = LBibTeX.LBibTeX.new()
 	BibTeX.crossref.mincrossrefs = mincrossrefs
-	local b,msg = BibTeX:load_aux(file)
+	local b
+	b,msg = BibTeX:load_aux(file)
 	if b == false then print(msg) os.exit(1) end
 	BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
 	local style = kpse.find_file("lbt-" .. BibTeX.style .. "_bst.lua","lua")
-	if style == nil then 
+	if style == nil then
 		BibTeX:error("style " .. BibTeX.style .. " is not found")
 		os.exit(3)
 	end
@@ -44,7 +45,7 @@ for i,f in ipairs(files) do
 	BibTeX:read_db()
 
 	--local style_file_exec = loadfile(style,"t")
-	function style_file_exec()
+	local function style_file_exec()
 		local backup = {io = io,os = os}
 		io = nil
 		os = nil

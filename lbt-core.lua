@@ -54,7 +54,7 @@ function LBibTeX.read_aux(file)
 	for line in fp:lines() do
 		if line:sub(1,1) == "\\" then
 			local p = line:find("[%[{%(]")
-			local cs = ""
+			local cs
 			if p == nil then
 				cs = line
 				line = ""
@@ -66,12 +66,13 @@ function LBibTeX.read_aux(file)
 			local args = {}
 			while true do
 				local op = line:sub(1,1)
-				local cld = ""
+				local cld
 				if op == "{" then cld = "}"
 				elseif op == "(" then cld = ")"
 				elseif op == "[" then cld = "]"
 				else break end
-				local p,q = line:find("%b" .. op .. cld)
+				local q
+				p,q = line:find("%b" .. op .. cld)
 				if p ~= nil then
 					table.insert(args,{arg = line:sub(p + 1,q - 1),open = op, close = cld})
 					line = line:sub(q + 1)
@@ -162,7 +163,7 @@ function LBibTeX.LBibTeX:read_db()
 	if self.cites == nil then
 		-- \cite{*}
 		self.cites = {}
-		for k,v in pairs(self.db) do
+		for dummy,v in pairs(self.db) do
 			self.cites[#self.cites + 1] = v
 		end
 	else
@@ -182,13 +183,6 @@ function LBibTeX.LBibTeX:read_db()
 		end
 	end
 	return true
-end
-
-local function table_connect(a,b)
-	for i = 1,#b do
-		table.insert(a,b[i])
-	end
-	return a
 end
 
 function LBibTeX.LBibTeX:dispose()
@@ -262,7 +256,7 @@ end
 
 local function generate_sortfunction(targets,formatters,equal,lessthan)
 	return function(lhs,rhs)
-		for i,target in ipairs(targets) do
+		for dummy,target in ipairs(targets) do
 			local l = get_sorting_formatter(formatters,target)
 			if l == nil then l = lhs.fields[target]
 			else l = l(formatters,lhs) end
@@ -301,7 +295,7 @@ function LBibTeX.LBibTeX:outputthebibliography()
 	self.cites = self.crossref:modify_citations(self.cites,self)
 	-- label生成
 	if self.label.make ~= nil then
-		for i,c in ipairs(self.cites) do
+		for dummy,c in ipairs(self.cites) do
 			c.label = self.label:make(c)
 		end
 	end
