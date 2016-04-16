@@ -40,7 +40,7 @@ local function fields_index(table,key)
 	if val == nil_data then return nil end
 	if val == nil then val = meta.__real_fields[key] end
 	if val == nil then return nil end
-	if meta.__conversions == nil or #meta.__conversions == 0 then return val end
+	if meta.__conversions == nil then return val end
 	for i,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
@@ -57,8 +57,10 @@ local function fields_enum(table,index)
 	meta = getmetatable(table)
 	local val,newindex
 	if index == nil or meta.__extra_fields[index] ~= nil then
-		newindex,val = next(meta.__extra_fields,index)
-		if val == nil_data then newindex,val = next(meta.__extra_fields,newindex) end
+		newindex = index
+		repeat
+			newindex,val = next(meta.__extra_fields,newindex)
+		until val ~= nil_data or newindex == nil
 	end
 	if newindex == nil then
 		if meta.__extra_fields[index] == nil then newindex = index end
@@ -67,6 +69,7 @@ local function fields_enum(table,index)
 		until newindex == nil or meta.__extra_fields[newindex] == nil
 	end
 	if val == nil then return nil,nil end
+	if meta.__conversions == nil then return newindex,val end
 	for i,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
@@ -92,6 +95,7 @@ function Citation.new(db,data)
 --	if obj.extra_data == nil then obj.extra_data = {} end
 	setmetatable(obj.fields,{
 		__index = fields_index,
+		__newindex = fields_newindex,
 		__real_fields = fields,
 		__extra_fields = extra_fields,
 		__conversions = db.conversions,
