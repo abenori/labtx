@@ -1,4 +1,3 @@
-require "lbt-template"
 std_styles = require "lbt-style-std"
 
 BibTeX.macros = std_styles.macros

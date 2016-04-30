@@ -1,3 +1,6 @@
+local Functions = require "lbt-funcs"
+local CrossReference = require "lbt-crossref"
+
 local std_styles = {}
 
 std_styles.macros = {}
@@ -62,9 +65,9 @@ std_styles.formatters.date = "<<|$<month>| >|$<year>|>"
 function std_styles.formatters:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
 
 function std_styles.formatters:format_names(names)
-	local a = LBibTeX.split_names(names)
-	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
-	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
+	local a = Functions.split_names(names)
+	if #a <= 2 then return Functions.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
+	else return Functions.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
 function std_styles.formatters:author(c)
@@ -87,7 +90,7 @@ end
 
 function std_styles.formatters:editor(c)
 	if c.fields["editor"] == nil then return nil end
-	local a = LBibTeX.split_names(c.fields["editor"])
+	local a = Functions.split_names(c.fields["editor"])
 	local r = self:format_names(c.fields["editor"]) .. ", editor"
 	if #a > 1 then r = r .. "s" end
 	return r
@@ -95,7 +98,7 @@ end
 
 function std_styles.formatters:title(c)
 	if c.fields["title"] == nil then return nil
-	else return LBibTeX.change_case(c.fields["title"],"t") end
+	else return Functions.change_case(c.fields["title"],"t") end
 end
 
 function std_styles.formatters:btitle(c)
@@ -115,7 +118,7 @@ end
 
 function std_styles.formatters:edition(c)
 	if c.fields["edition"] == nil then return nil
-	else return LBibTeX.change_case(c.fields["edition"],"l") .. " edition" end
+	else return Functions.change_case(c.fields["edition"],"l") .. " edition" end
 end
 
 function std_styles.formatters:organization_if_editor_publisher(c)
@@ -156,7 +159,7 @@ function std_styles.formatters:chapter_pages(c)
 	if c.fields["chapter"] == nil then return self:pages(c) end
 	local r = ""
 	if c.fields["type"] == nil then r = "chapter"
-	else r = LBibTeX.change_case(c.fields["type"],"l") end
+	else r = Functions.change_case(c.fields["type"],"l") end
 	r = r .. tie_or_space(c.fields["chapter"])
 	if c.fields["pages"] ~= nil then r = r .. ", " .. self:pages(c) end
 	return r
@@ -169,18 +172,18 @@ end
 
 function std_styles.formatters:master_thesis_type(c)
 	if c.fields["type"] == nil then return "Master's thesis"
-	else return LBibTeX.change_case(c.fields["type"],"t") end
+	else return Functions.change_case(c.fields["type"],"t") end
 end
 
 function std_styles.formatters:phd_thesis_type(c)
 	if c.fields["type"] == nil then return "PhD thesis"
-	else return LBibTeX.change_case(c.fields["type"],"t") end
+	else return Functions.change_case(c.fields["type"],"t") end
 end
 
 function std_styles.formatters:tr_number(c)
 	local r = c.fields["type"]
 	if r == nil then r = "Technical Report" end
-	if c.fields["number"] == nil then r = LBibTeX.change_case(r,"t")
+	if c.fields["number"] == nil then r = Functions.change_case(r,"t")
 	else r = r .. tie_or_space(c.fields["number"]) end
 	return r
 end
@@ -193,7 +196,7 @@ function std_styles.formatters:date_if_not_address(c)
 	if c.fields["address"] == nil then return self:date(c) end
 end
 
-std_styles.crossref = LBibTeX.CrossReference.new()
+std_styles.crossref = CrossReference.new()
 std_styles.crossref.templates = {}
 std_styles.crossref.templates["article"] = "[$<author>:$<title>:[<In |$<key|journal_crossref>|> \\cite{$<crossref>}:$<pages>]:$<note>]"
 std_styles.crossref.templates["book"] = "[$<author|editor>:$<btitle>:[$<book_crossref>  \\cite{$<crossref>}:$<edition>:$<date>]:$<note>]"
@@ -226,10 +229,10 @@ end
 
 function std_styles.formatters:editor_crossref(c)
 	local r = ""
-	local a = LBibTeX.split_names(c.fields["editor"])
-	r = r .. LBibTeX.format_name(a[1],"{vv~}{ll}")
+	local a = Functions.split_names(c.fields["editor"])
+	r = r .. Functions.format_name(a[1],"{vv~}{ll}")
 	if (#a == 2 and a[2] == "others") or (#a > 2) then r = r .. " et~al."
-	else r = r .. " and " .. LBibTeX.format_name(a[2],"{vv~}{ll}") end
+	else r = r .. " and " .. Functions.format_name(a[2],"{vv~}{ll}") end
 	return r
 end
 

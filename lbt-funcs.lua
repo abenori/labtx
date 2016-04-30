@@ -1,5 +1,4 @@
-if LBibTeX == nil then LBibTeX = {} end
-if LBibTeX.LBibTeX == nil then LBibTeX.LBibTeX = {} end
+local Functions = {}
 
 -- 三つの状態がある
 -- nestレベル=0: 1
@@ -52,7 +51,7 @@ end
 -- not compatible with text.prefix$ (at least at this point)
 -- strから頭numバイトをとる．ただし，文字を途中で切るようなことはしない．
 -- text_prefix("aあい",2)は"aあ"となるようにする．
-function LBibTeX.text_prefix(str,num)
+function Functions.text_prefix(str,num)
 	local index = 1
 	local r = ""
 	for s,n in split_str_asin_bibtex(str) do
@@ -72,7 +71,7 @@ function LBibTeX.text_prefix(str,num)
 end
 
 -- とりあず普通にバイト数で数えるやつ
-function LBibTeX.text_length(str)
+function Functions.text_length(str)
 	local r = 0
 	for s,n in split_str_asin_bibtex(str) do
 		if n == 2 then r = r + 1
@@ -85,7 +84,7 @@ end
 -- 検索関数funcによるsplit
 -- funcは見付かった最初と最後を返す（バイト数）
 -- 戻り値：aXbYcで[XY]を検索した場合{a,b,c},{X,Y}
-function LBibTeX.string_split(str,func)
+function Functions.string_split(str,func)
 	local array = {}
 	local separray = {}
 	local r = 1
@@ -139,7 +138,7 @@ end
 
 -- {}によるネストレベルが0のものを検索する．素の検索にはfuncを使う．
 -- {}は\によるエスケープも考慮する．
-function LBibTeX.find_nonnested(str,func,init)
+function Functions.find_nonnested(str,func,init)
 	local nest = 0
 	local r = init
 	if r == nil then r = 1 end
@@ -165,7 +164,7 @@ function LBibTeX.find_nonnested(str,func,init)
 	end
 end
 
-function LBibTeX.split_names(names,seps)
+function Functions.split_names(names,seps)
 	if seps == nil then seps = {" [aA][nN][dD] "} end
 	local f = function(str)
 		local r1,r2,t = nil
@@ -180,7 +179,7 @@ function LBibTeX.split_names(names,seps)
 		end
 		return r1,r2,t
 	end
-	return LBibTeX.string_split(names,f)
+	return Functions.string_split(names,f)
 end
 
 -- debug用
@@ -249,7 +248,7 @@ local function SplitvonLast(array,separray,from,to)
 end
 
 -- **.partsに名前を入れて，***.sepsに区切り文字を入れる
-function LBibTeX.get_name_parts(name)
+function Functions.get_name_parts(name)
 	-- analyzing name
 	local first,last,von,jr
 	first = {} first.parts = {} first.seps = {}
@@ -258,7 +257,7 @@ function LBibTeX.get_name_parts(name)
 	von = {} von.parts = {} von.seps = {}
 	
 	-- BibTeXではカンマ，white_space={" ","\t"}，sep_char={"~","-"}で区切る
-	local array,separray = LBibTeX.string_split(name:gsub("^[ ,\t~]*",""):gsub("[ ,\t~]*$",""),function(s) return LBibTeX.find_nonnested(s,function(t) return t:find("([ ,~\t%-]+)") end)end)
+	local array,separray = Functions.string_split(name:gsub("^[ ,\t~]*",""):gsub("[ ,\t~]*$",""),function(s) return Functions.find_nonnested(s,function(t) return t:find("([ ,~\t%-]+)") end)end)
 	local comma1 = nil
 	local comma2 = nil
 	for i = 1,#separray do
@@ -311,7 +310,7 @@ function LBibTeX.get_name_parts(name)
 	return {first = first,jr = jr,last = last,von = von}
 end
 
-function LBibTeX.format_name_by_parts(nameparts,format)
+function Functions.format_name_by_parts(nameparts,format)
 	local nmpts = {}
 	for k,v in pairs(nameparts) do
 		nmpts[k] = v
@@ -326,7 +325,7 @@ function LBibTeX.format_name_by_parts(nameparts,format)
 		formatted = formatted .. format:sub(r,p - 1)
 		r = q + 1
 		local str = format:sub(p + 1,q - 1)
-		local subptn = LBibTeX.find_nonnested(str,lvjfsearch)
+		local subptn = Functions.find_nonnested(str,lvjfsearch)
 		if subptn == nil then
 			formatted = formatted .. str
 		else
@@ -368,7 +367,7 @@ function LBibTeX.format_name_by_parts(nameparts,format)
 					local name
 					if full then name = target.parts[i]
 					else
-						name = LBibTeX.text_prefix(target.parts[i],1)
+						name = Functions.text_prefix(target.parts[i],1)
 						if i ~= #target.parts and sep == nil then name = name  .. "." end
 					end
 					if i ~= 1 then
@@ -387,7 +386,7 @@ function LBibTeX.format_name_by_parts(nameparts,format)
 					end
 					thispart = thispart .. name
 				end
-				if (LBibTeX.text_length(thispart) + LBibTeX.text_length(after)) > 3 and after:sub(after:len()) == "~" then
+				if (Functions.text_length(thispart) + Functions.text_length(after)) > 3 and after:sub(after:len()) == "~" then
 					after = after:sub(1,after:len() - 1)
 					if after:sub(after:len(),after:len()) ~= "~" then
 						after = after .. " "
@@ -399,8 +398,8 @@ function LBibTeX.format_name_by_parts(nameparts,format)
 	end
 end
 
-function LBibTeX.format_name(name,format)
-	return LBibTeX.format_name_by_parts(LBibTeX.get_name_parts(name),format)
+function Functions.format_name(name,format)
+	return Functions.format_name_by_parts(Functions.get_name_parts(name),format)
 end
 
 -- str "t" change.case$ の結果
@@ -410,7 +409,7 @@ end
 -- {\TeX B} --> {\TeX B}
 -- A: {\\TeX B} -> A: {\\TeX B}
 -- とりあえず実装．もっとシンプルになりそうだけど……
-function LBibTeX.change_case(str,t)
+function Functions.change_case(str,t)
 	t = t:lower()
 	local func
 	if t == "u" then func = unicode.utf8.upper
@@ -472,7 +471,7 @@ function LBibTeX.change_case(str,t)
 	return r
 end
 
-function LBibTeX.make_name_list(namearray, format, separray, etalstr)
+function Functions.make_name_list(namearray, format, separray, etalstr)
 	if #separray == 0 then separray = {", "} end
 	
 	local r = ""
@@ -482,7 +481,7 @@ function LBibTeX.make_name_list(namearray, format, separray, etalstr)
 			if type(format) == "function" then
 				name = format(name,i,#namearray)
 			else
-				name = LBibTeX.format_name(name,format)
+				name = Functions.format_name(name,format)
 			end
 		end
 		if i == #namearray and name == "others" and etalstr ~= nil then
@@ -503,7 +502,7 @@ function LBibTeX.make_name_list(namearray, format, separray, etalstr)
 end
 
 -- とりあえず適当な実装
-function LBibTeX.remove_TeX_cs(s)
+function Functions.remove_TeX_cs(s)
 	return s:gsub("\\[a-zA-Z]+",""):gsub("\\.",""):gsub("[{}]","")
 end
 
@@ -525,7 +524,7 @@ default_required["conference"] = default_required["incollection"]
 
 -- required[type] = {required = {...},optional = {...}}
 -- optional is ignored (at this point)
-function LBibTeX.citation_check(citations,required)
+function Functions.citation_check(citations,required)
 	if required == nil then required = default_required end
 	local r = {}
 	for dummy,v in pairs(citations) do
@@ -552,7 +551,8 @@ function LBibTeX.citation_check(citations,required)
 	return r
 end
 
-function LBibTeX.LBibTeX:output_citation_check(citation_check)
+function Functions.citation_check_to_string_table(citation_check)
+	local rv = {}
 	for k,v in pairs(citation_check) do
 		local r = "missing "
 		for i = 1,#v do
@@ -565,8 +565,9 @@ function LBibTeX.LBibTeX:output_citation_check(citation_check)
 			if #v[i] > 1 then r = r .. ")" end
 		end
 		r = r .. " in " .. k
-		self:warning(r)
+		table.insert(rv,r)
 	end
+	return rv
 end
 
 -- [from,to]をソートする．
@@ -606,7 +607,9 @@ local function merge_sort(list,from,to,comp)
 	return list
 end
 
-function LBibTeX.stable_sort(list,comp)
+function Functions.stable_sort(list,comp)
 	if comp == nil then comp = function(a,b) return a < b end end
 	return merge_sort(list,1,#list,comp)
 end
+
+return Functions

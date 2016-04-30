@@ -1,7 +1,5 @@
-if LBibTeX == nil then LBibTeX = {} end
-
-LBibTeX.CrossReference = {}
-LBibTeX.CrossReference.all_type = ""
+local CrossReference = {}
+CrossReference.all_type = ""
 
 --[[
 reference_key_name, override, all, mincrossrefs
@@ -19,7 +17,7 @@ CrossReference.override["article"]["book"] = {
 	{"author","editor",false}
 ]]
 
-function LBibTeX.CrossReference.new()
+function CrossReference.new()
 	local obj = {reference_key_name = "crossref",override = {},inherit = {},all = {},mincrossrefs=2}
 	local function no_return_nil(table,key)
 		local x = rawget(table,key)
@@ -33,11 +31,11 @@ function LBibTeX.CrossReference.new()
 	setmetatable(obj.inherit,{__index = no_return_nil})
 	setmetatable(obj.override,{__index = no_return_nil})
 	setmetatable(obj.all,{__index = no_return_nil})
-	obj.override[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type] = {
-		{LBibTeX.CrossReference.all_type,LBibTeX.CrossReference.all_type,false}
+	obj.override[CrossReference.all_type][CrossReference.all_type] = {
+		{CrossReference.all_type,CrossReference.all_type,false}
 	}
-	obj.all[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type] = true
-	return setmetatable(obj,{__index = LBibTeX.CrossReference})
+	obj.all[CrossReference.all_type][CrossReference.all_type] = true
+	return setmetatable(obj,{__index = CrossReference})
 end
 
 -- table[source_type][target_type][source_key] = {target_keyの配列}という形にしておく．
@@ -110,20 +108,20 @@ local function get_fields(table,source_type,target_type)
 	local src_type_table
 	if table[source_type] ~= nil then
 		src_type_table = concat_array_in_table(table[source_type][target_type],
-				table[source_type][LBibTeX.CrossReference.all_type])
+				table[source_type][CrossReference.all_type])
 	end
 	local all_type_table
-	if table[LBibTeX.CrossReference.all_type] ~= nil then
-		all_type_table = concat_array_in_table(table[LBibTeX.CrossReference.all_type][target_type],
-				table[LBibTeX.CrossReference.all_type][LBibTeX.CrossReference.all_type])
+	if table[CrossReference.all_type] ~= nil then
+		all_type_table = concat_array_in_table(table[CrossReference.all_type][target_type],
+				table[CrossReference.all_type][CrossReference.all_type])
 	end
 	return concat_array_in_table(src_type_table,all_type_table)
 end
 
 
-function LBibTeX.CrossReference:modify_citations(cites,db)
+function CrossReference:modify_citations(cites,db)
 --	local obj = {reference_key_name = "crossref",override = {},inherit = {}, except = {},all = {},mincrossrefs=1}
-	local all_type = LBibTeX.CrossReference.all_type
+	local all_type = CrossReference.all_type
 	local inherit_table = modify_table(self.inherit)
 	local override_table
 	if type(self.override) ~= "table" then 
@@ -216,7 +214,7 @@ function LBibTeX.CrossReference:modify_citations(cites,db)
 end
 
 
-function LBibTeX.CrossReference:make_formatter(orig_formatter,crossref_formatter)
+function CrossReference:make_formatter(orig_formatter,crossref_formatter)
 	local f = {}
 	for k,v in pairs(orig_formatter) do
 		if crossref_formatter[k] == nil then
@@ -231,3 +229,4 @@ function LBibTeX.CrossReference:make_formatter(orig_formatter,crossref_formatter
 	return f
 end
 
+return CrossReference

@@ -1,20 +1,22 @@
-if LBibTeX == nil then LBibTeX = {} end
-LBibTeX.debug = false
+local Core = {}
 
-require "lbt-database"
-require "lbt-crossref"
-require "lbt-template"
+local debug = require "lbt-debug"
+
+local BibDatabase = require "lbt-bibdb"
+local CrossReference = require "lbt-crossref"
+local Template = require "lbt-template"
+local Functions = require "lbt-funcs"
 
 -- bblを表す構造
--- LBibTeX.LBibTeX.aux, LBibTeX.LBibTeX.style, LBibTeX.LBibTeX.cites, LBibTeX.LBibTeX.bibs, LBibTeX.LBibTeX.bbl (stream)
+-- Core.aux, Core.style, Core.cites, Core.bibs, Core.bbl (stream)
 
-LBibTeX.LBibTeX = {}
-setmetatable(LBibTeX.LBibTeX,{__index = LBibTeX.BibDatabase})
+Core = {}
+setmetatable(Core,{__index = BibDatabase})
 
 local lbibtex_default = require "lbt-default"
 
-function LBibTeX.LBibTeX.new()
-	local obj = LBibTeX.BibDatabase.new()
+function Core.new()
+	local obj = BibDatabase.new()
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -22,7 +24,7 @@ function LBibTeX.LBibTeX.new()
 	obj.bbl = nil
 	obj.blg = nil
 	-- 以下アウトプット用設定
-	obj.crossref = LBibTeX.CrossReference.new()
+	obj.crossref = CrossReference.new()
 	obj.crossref.templates = {}
 	obj.blockseparator = {}
 	obj.templates = {}
@@ -34,7 +36,7 @@ function LBibTeX.LBibTeX.new()
 	obj.sorting.targets = lbibtex_default.sorting.targets
 	obj.label = lbibtex_default.label -- obj.label.make, obj.label.add_suffix
 	obj.modify_citations = nil
-	return setmetatable(obj,{__index = LBibTeX.LBibTeX})
+	return setmetatable(obj,{__index = Core})
 end
 
 local function includeskey(table,key)
@@ -44,7 +46,7 @@ local function includeskey(table,key)
 	return false
 end
 
-function LBibTeX.read_aux(file)
+function Core.read_aux(file)
 	local aux = {}
 	aux.citekeys = {}
 	aux.database = {}
@@ -130,8 +132,8 @@ function LBibTeX.read_aux(file)
 end
 
 
-function LBibTeX.LBibTeX:load_aux(file)
-	local aux = LBibTeX.read_aux(file)
+function Core:load_aux(file)
+	local aux = Core.read_aux(file)
 	self.aux_contents = aux
 	self.cites = aux.citekeys
 	self.style = aux.style
@@ -150,7 +152,7 @@ function LBibTeX.LBibTeX:load_aux(file)
 	self.warning_count = 0
 end
 
-function LBibTeX.LBibTeX:read_db()
+function Core:read_db()
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
 		if bibfile == nil or self:read(bibfile) == false then
@@ -185,7 +187,7 @@ function LBibTeX.LBibTeX:read_db()
 	return true
 end
 
-function LBibTeX.LBibTeX:dispose()
+function Core:dispose()
 	if self.warning_count == 1 then self:message("(There was a warning.)")
 	elseif self.warning_count > 0 then self:message("(There were " .. tostring(self.warning_count) .. " warnings.)")
 	end
@@ -193,7 +195,7 @@ function LBibTeX.LBibTeX:dispose()
 	if self.blg ~= nil then self.blg:close() self.blg = nil end
 end
 
-function LBibTeX.LBibTeX:get_longest_label()
+function Core:get_longest_label()
 	local max_len = 0
 	local max_len_label = nil
 	for i = 1, #self.cites do
@@ -209,11 +211,11 @@ function LBibTeX.LBibTeX:get_longest_label()
 	return max_len_label
 end
 
-function LBibTeX.LBibTeX:output(s)
+function Core:output(s)
 	self.bbl:write(s)
 end
 
-function LBibTeX.LBibTeX:outputline(s)
+function Core:outputline(s)
 	self.bbl:write(s .. "\n")
 end
 
@@ -223,7 +225,7 @@ local function trim(str)
 end
 
 
-function LBibTeX.LBibTeX:outputcites(formatter)
+function Core:outputcites(formatter)
 	for i = 1, #self.cites do
 		local t = self.cites[i].type
 		if t ~= nil then
@@ -266,7 +268,7 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 			else r = r(formatters,rhs) end
 			if r ~= nil then
 				if equal(l,r) == false then
-					if LBibTeX.debug == true then
+					if debug.debug == true then
 						print("for comparing " .. lhs.key .. " and " .. rhs.key .. ", " .. target .. " is used, the values are:")
 						print(l)
 						print(r)
@@ -282,9 +284,9 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 	end
 end
 
-function LBibTeX.LBibTeX:outputthebibliography()
+function Core:outputthebibliography()
 	-- formatter生成
-	local template = LBibTeX.Template.new(self.blockseparator)
+	local template = Template.new(self.blockseparator)
 	local formatter,cross_formatter,msg
 	formatter,msg = template:make(self.templates, self.formatters)
 	if formatter == nil then self:error(msg) return end
@@ -305,7 +307,7 @@ function LBibTeX.LBibTeX:outputthebibliography()
 		sort_formatter,msg = template:modify_functions(self.sorting.formatters)
 		if sort_formatter == nil then self:error(msg) return end
 		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
-		self.cites = LBibTeX.stable_sort(self.cites, sortfunc)
+		self.cites = Functions.stable_sort(self.cites, sortfunc)
 	end
 	-- label suffix
 	if self.label.make ~= nil and self.label.add_suffix ~= nil then
@@ -317,7 +319,9 @@ function LBibTeX.LBibTeX:outputthebibliography()
 	if longest_label == nil then longest_label = tostring(#self.cites) end
 
 	-- check citations
-	self:output_citation_check(LBibTeX.citation_check(self.cites))
+	for dummy,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
+		self:warning(v)
+	end
 
 	-- last modification
 	if self.modify_citations ~= nil then
@@ -333,13 +337,13 @@ function LBibTeX.LBibTeX:outputthebibliography()
 	self:outputline("\\end{thebibliography}")
 end
 
-function LBibTeX.LBibTeX:warning(s)
+function Core:warning(s)
 	self.warning_count = self.warning_count + 1
 	print("LBibTeX warning: " .. s)
 	if self.blg ~= nil then self.blg:write("LBibTeX warning: " .. s .. "\n") end
 end
 
-function LBibTeX.LBibTeX:error(s,exit_code)
+function Core:error(s,exit_code)
 	print("LBibTeX error: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
 	if exit_code == nil then exit_code = 1 end
@@ -347,29 +351,14 @@ function LBibTeX.LBibTeX:error(s,exit_code)
 	os.exit(exit_code)
 end
 
-function LBibTeX.LBibTeX:log(s)
+function Core:log(s)
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
-function LBibTeX.LBibTeX:message(s)
+function Core:message(s)
 	print(s)
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 
----------------------------------------------------
-if LBibTeX.debug == true then
-	LBibTeX.debugger = {}
-	function LBibTeX.debuger.outputarray(a)
-		print("array size = " .. tostring(#a) .. "\n")
-		for i = 1, #a do
-			print("i = " .. tostring(i) .. ", type = " .. type(a[i]) .. "\n" .. tostring(a[i]))
-		end
-	end
-
-	function LBibTeX.debuger.outputtable(a)
-		for k,v in pairs(a) do
-			print("key = " .. tostring(k) .. ", type = " .. type(v) .. "\n" .. tostring(v))
-		end
-	end
-end
+return Core

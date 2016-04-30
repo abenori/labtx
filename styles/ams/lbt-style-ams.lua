@@ -1,7 +1,5 @@
-require "lbt-core"
-require "lbt-funcs"
-require "lbt-template"
-require "lbt-crossref"
+local Functions = require "lbt-funcs"
+local CrossReference = require "lbt-crossref"
 
 ams_styles = {}
 ams_styles.macros = {}
@@ -54,9 +52,9 @@ ams_styles.formatters = {}
 function ams_styles.formatters:nameformat(c) return "{ff~}{vv~}{ll}{, jj}" end
 
 function ams_styles.formatters:format_names(names)
-	local a = LBibTeX.split_names(names)
-	if #a <= 2 then return LBibTeX.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
-	else return LBibTeX.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
+	local a = Functions.split_names(names)
+	if #a <= 2 then return Functions.make_name_list(a,self:nameformat(c),{", "," and "},", et~al.")
+	else return Functions.make_name_list(a,self:nameformat(c),{", ",", and "},", et~al.") end
 end
 
 function ams_styles.formatters:proceedings_organization(c)
@@ -71,7 +69,7 @@ end
 function ams_styles.formatters:tech_rep_number(c)
 	local r = c.fields["type"]
 	if r == nil then r = "Tech. Report" end
-	if c.fields["number"] == nil then r = LBibTeX.change_case(r,"t")
+	if c.fields["number"] == nil then r = Functions.change_case(r,"t")
 	else r = r .. tie_or_space(c.fields["number"]) end
 	return r
 end
@@ -97,7 +95,7 @@ function ams_styles.formatters:editor(c)
 	if e == nil then return nil
 	else
 		local r = self:format_names(e)
-		if #LBibTeX.split_names(e) > 1 then r = r .. " (eds.)"
+		if #Functions.split_names(e) > 1 then r = r .. " (eds.)"
 		else r = r .. " (ed.)" end
 		return r
 	end
@@ -111,12 +109,12 @@ end
 
 function ams_styles.formatters:title(c)
 	if c.fields["title"] == nil then return nil
-	else return "\\emph{" .. LBibTeX.change_case(c.fields["title"],"t") .. "}" end
+	else return "\\emph{" .. Functions.change_case(c.fields["title"],"t") .. "}" end
 end
 
 function ams_styles.formatters:edition(c)
 	if c.fields["edition"] == nil then return nil
-	else return LBibTeX.change_case(c.fields["edition"],"l") .. " ed." end
+	else return Functions.change_case(c.fields["edition"],"l") .. " ed." end
 end
 
 function ams_styles.formatters:book_volume_series_number(c)
@@ -141,7 +139,7 @@ function ams_styles.formatters:chapter_pages(c)
 	else 
 		local r = ""
 		if c.fields["type"] == nil then r = "ch.~"
-		else r = LBibTeX.change_case(c.fields["type"],"l") .. " "
+		else r = Functions.change_case(c.fields["type"],"l") .. " "
 		end
 		r = r .. c.fields["chapter"]
 		if c.fields["pages"] ~= nil then r = r .. ", " .. self:book_pages(c) end
@@ -168,7 +166,7 @@ end
 
 function ams_styles.formatters:phd_thesis_type(c)
 	if c.fields["type"] == nil then return "Ph.D. thesis"
-	else return LBibTeX.change_case(c.fields["type"],"t") end
+	else return Functions.change_case(c.fields["type"],"t") end
 end
 
 function ams_styles.formatters:incollection_title_editor(c)
@@ -196,7 +194,7 @@ ams_styles.formatters.mrnumfunc = "<\\MR{|$<mrnumber>|}>"
 
 
 -- cross reference
-ams_styles.crossref = LBibTeX.CrossReference.new()
+ams_styles.crossref = CrossReference.new()
 ams_styles.crossref.templates = {}
 ams_styles.crossref.templates["article"] = "[$<author>:$<title>:<in |$<key|journal>|> \\cite{$<crossref>}:$<pages>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
 ams_styles.crossref.templates["book"] = "[$<author|editor>:$<title>:$<edition>:$<book_crossref> \\cite{$<crossref>}:$<date>:@S<>< (|$<language>|)>:$<note>]$<mrnumfunc>"
@@ -236,10 +234,10 @@ end
 
 function ams_styles.formatters:editor_crossref(c)
 	local r = ""
-	local a = LBibTeX.split_names(c.fields["editor"])
-	r = r .. LBibTeX.format_name(a[1],"{vv~}{ll}")
+	local a = Functions.split_names(c.fields["editor"])
+	r = r .. Functions.format_name(a[1],"{vv~}{ll}")
 	if (#a == 2 and a[2] == "others") or (#a > 2) then r = r .. " et~al."
-	else r = r .. " and " .. LBibTeX.format_name(a[2],"{vv~}{ll}") end
+	else r = r .. " and " .. Functions.format_name(a[2],"{vv~}{ll}") end
 	return r
 end
 

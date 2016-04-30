@@ -1,6 +1,6 @@
 -- デフォルト設定
-require "lbt-funcs"
-require "lbt-template"
+local Functions = require "lbt-funcs"
+local Template = require "lbt-template"
 local default = {}
 
 -- sort設定
@@ -36,8 +36,8 @@ function default.sorting.formatters:name(c)
 		if s ~= nil then return purify(remove_article(s))
 		else return nil end
 	else
-		local array = LBibTeX.split_names(s)
-		return purify(LBibTeX.make_name_list(array,self:name_format(c),{"     "},"et al"))
+		local array = Functions.split_names(s)
+		return purify(Functions.make_name_list(array,self:name_format(c),{"     "},"et al"))
 	end
 end
 function default.sorting.formatters:entry_key(c) return c.key end
@@ -69,16 +69,16 @@ default.label.templates[""] = "$<shorthand|($<author|key|entry_key>$<year>)>"
 
 local function makelabelfromname(s)
 	if s == nil then return nil end
-	local a = LBibTeX.split_names(s)
+	local a = Functions.split_names(s)
 	local label = ""
 	if #a > 4 then label = "{\\etalchar{+}}" end
 	local n = #a
 	for dummy = 1,n - 5 do table.remove(a) end
-	label = LBibTeX.make_name_list(a,"{v{}}{l{}}",{""},"{\\etalchar{+}}") .. label
+	label = Functions.make_name_list(a,"{v{}}{l{}}",{""},"{\\etalchar{+}}") .. label
 	if #a > 1 then return label
 	else
-		if LBibTeX.text_length(label) > 1 then return label
-		else return LBibTeX.text_prefix(LBibTeX.format_name(s,"{ll}"),3) end
+		if Functions.text_length(label) > 1 then return label
+		else return Functions.text_prefix(Functions.format_name(s,"{ll}"),3) end
 	end
 end
 
@@ -92,17 +92,17 @@ end
 
 function default.label.formatters:organization(c)
 	local s = c.fields["organization"]
-	if s ~= nil then return LBibTeX.text_prefix(s:gsub("^The",""),3)
+	if s ~= nil then return Functions.text_prefix(s:gsub("^The",""),3)
 	else return nil end
 end
 
 function default.label.formatters:key(c)
 	local s = c.fields["key"]
-	if s ~= nil then return LBibTeX.text_prefix(s,3) end
+	if s ~= nil then return Functions.text_prefix(s,3) end
 end
 
 function default.label.formatters:entry_key(c)
-	return LBibTeX.text_prefix(c.key,3)
+	return Functions.text_prefix(c.key,3)
 end
 
 function default.label.formatters:year(c)
@@ -121,7 +121,7 @@ default.label.suffix = default.label.suffix_alphabet
 
 function default.label:make(c)
 	if self.makelabelfunctions == nil then
-		local template = LBibTeX.Template.new()
+		local template = Template.new()
 		self.makelabelfunctions = template:make(self.templates,self.formatters)
 	end
 	local func = self.makelabelfunctions[c.type] or self.makelabelfunctions[""]

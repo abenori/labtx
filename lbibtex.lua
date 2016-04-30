@@ -1,6 +1,6 @@
 local start_time = os.clock()
 kpse.set_program_name("texlua","bibtex")
-require "lbt-core"
+local LBibTeX = require "lbt-core"
 
 local option = (require "lbt-options").new()
 local mincrossrefs = 2
@@ -30,7 +30,7 @@ for dummy,f in ipairs(files) do
 		else return fullpath:sub(r) end
 	end
 
-	BibTeX = LBibTeX.LBibTeX.new()
+	BibTeX = LBibTeX.new()
 	BibTeX.crossref.mincrossrefs = mincrossrefs
 	local b
 	b,msg = BibTeX:load_aux(file)
