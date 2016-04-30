@@ -20,8 +20,6 @@ $<A|B|C|...>：関数Aが呼び出され，その値が空ならばBが呼び出
 ユーザ定義関数は配列を渡すことで，ブロックの区切りを明示することができる．
 ]]
 
-Template = {}
-
 local function isempty(array)
 	for i = 1,#array do
 		if array[i] ~= nil and array[i] ~= "" then return false end

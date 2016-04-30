@@ -10,7 +10,6 @@ local Functions = require "lbt-funcs"
 -- bblを表す構造
 -- Core.aux, Core.style, Core.cites, Core.bibs, Core.bbl (stream)
 
-Core = {}
 setmetatable(Core,{__index = BibDatabase})
 
 local lbibtex_default = require "lbt-default"
