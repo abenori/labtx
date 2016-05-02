@@ -8,7 +8,7 @@ local function show_help(options_msg)
 	local msg = "Usage: lbibtex [option] auxfile"
 	msg = msg .. "\n" .. options_msg
 	local msg = msg:gsub("\n","\n ")
-	print(msg)
+	io.stdout:write(msg)
 end
 
 option.options = {
@@ -17,17 +17,17 @@ option.options = {
 }
 
 local files,msg = option:parse(arg)
-if files == nil then print("LBibTeX error: " .. msg) os.exit(1) end
-if #files == 0 then print("no input file") os.exit(1) end
+if files == nil then io.stderr:write("LBibTeX error: " .. msg) os.exit(1) end
+if #files == 0 then io.stderr:write("no input file") os.exit(1) end
 
 local first = true
 for dummy,f in ipairs(files) do
 	if f:sub(1,1) == "-" then goto continue end
-	if first == true then first = false else print("") end
+	if first == true then first = false else io.stdout:write("\n") end
 	if f:sub(-4,-1):lower() ~= ".aux" then f = f .. ".aux" end
 	local file = kpse.find_file(f)
 	if file == nil then
-		print("can't open file `" .. f .. "'")
+		io.stderr:write("can't open file `" .. f .. "'")
 		goto continue
 	end
 

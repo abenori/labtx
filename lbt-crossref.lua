@@ -47,9 +47,9 @@ local function modify_table(oldtable)
 		for target_type,v in pairs(vv) do
 			if type(target_type) == "string" then target_type = target_type:lower() end
 			t[source_type][target_type] = {}
-			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
+--			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
 			for dummy,array in ipairs(v) do
-				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
+--				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
 				local source_keys = array[1]
 				local target_keys = array[2]
 				if type(source_keys) ~= "table" then source_keys = {source_keys} end
