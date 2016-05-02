@@ -14,6 +14,10 @@ setmetatable(Core,{__index = BibDatabase})
 
 local lbibtex_default = require "lbt-default"
 
+local stderr = io.stderr
+local stdout = io.stdout
+local exit = os.exit
+
 function Core.new()
 	local obj = BibDatabase.new()
 	obj.style = ""
@@ -338,16 +342,16 @@ end
 
 function Core:warning(s)
 	self.warning_count = self.warning_count + 1
-	print("LBibTeX warning: " .. s)
+	stdout:write("LBibTeX warning: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX warning: " .. s .. "\n") end
 end
 
 function Core:error(s,exit_code)
-	print("LBibTeX error: " .. s .. "\n")
+	stderr:write("LBibTeX error: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
 	if exit_code == nil then exit_code = 1 end
 	self:dispose()
-	os.exit(exit_code)
+	exit(exit_code)
 end
 
 function Core:log(s)
@@ -355,7 +359,7 @@ function Core:log(s)
 end
 
 function Core:message(s)
-	print(s)
+	stdout:write(s .. "\n")
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 

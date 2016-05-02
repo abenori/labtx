@@ -64,6 +64,31 @@ function option:parse(args)
 	return remains
 end
 
+function option:helps()
+	local length = 0
+	local helps = {}
+	for dummy,s in ipairs(self.options) do
+		if s[1]:sub(-1,-1) == "=" then length = math.max(length,s[1]:len() + 5)
+		elseif s[1]:sub(-1,-1) == ":" then length = math.max(length,s[1]:len() + 7)
+		else length = math.max(length,s[1]:len())
+		end
+	end
+	length = length + 2
+	
+	for dummy,s in ipairs(self.options) do
+		local h = ""
+		local valtype
+		if tostring(s[4]):lower() == "number" then valtype = "NUM"
+		else valtype = "VAL" end
+		if s[1]:sub(-1,-1) == "=" then h = "--" .. s[1]:sub(1,-2) .. "=<" .. valtype .. ">"
+		elseif s[1]:sub(-1,-1) == ":" then h = "--" .. s[1]:sub(1,-2) .. "[=<" .. valtype .. ">]"
+		else h = "--" .. s[1]
+		end
+		table.insert(helps,string.format("%-" .. tostring(length) .. "s  %s",h,s[2]))
+	end
+	return table.concat(helps,"\n")
+end
+
 -- test
 --local opt = option.new()
 --opt.options = {
