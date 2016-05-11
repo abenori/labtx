@@ -1,3 +1,5 @@
+#!/usr/bin/env texlua
+
 local start_time = os.clock()
 kpse.set_program_name("texlua","bibtex")
 local LBibTeX = require "lbt-core"
@@ -6,14 +8,13 @@ local option = (require "lbt-options").new()
 local mincrossrefs = 2
 local function show_help(options_msg)
 	local msg = "Usage: lbibtex [option] auxfile"
-	msg = msg .. "\n" .. options_msg
-	local msg = msg:gsub("\n","\n ")
+	msg = msg .. "\n " .. options_msg:gsub("\n","\n ") .. "\n"
 	io.stdout:write(msg)
 end
 
 option.options = {
-   {"min-crossrefs=","include item after NUMBER cross-refs; default 2",function(n) mincrossrefs = n end,"number"},
-   {"help","display this helps and exit",function() show_help(option:helps()) os.exit(0) end}
+   {"min-crossrefs=","include item after <NUM> cross-refs; default 2",function(n) mincrossrefs = n end,"number"},
+   {"help","display this message and exit",function() show_help(option:helps()) os.exit(0) end}
 }
 
 local files,msg = option:parse(arg)
