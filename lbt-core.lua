@@ -10,8 +10,6 @@ local Functions = require "lbt-funcs"
 -- bblを表す構造
 -- Core.aux, Core.style, Core.cites, Core.bibs, Core.bbl (stream)
 
-setmetatable(Core,{__index = BibDatabase})
-
 local lbibtex_default = require "lbt-default"
 
 local stderr = io.stderr
@@ -19,7 +17,9 @@ local stdout = io.stdout
 local exit = os.exit
 
 function Core.new()
-	local obj = BibDatabase.new()
+	local obj = {}
+	obj.database = BibDatabase.new()
+	obj.db = obj.database.db
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -158,7 +158,7 @@ end
 function Core:read_db()
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
-		if bibfile == nil or self:read(bibfile) == false then
+		if bibfile == nil or self.database:read(bibfile) == false then
 			self:dispose()
 			return false,"Cannot find Database file " .. self.bibs[i]
 		else
@@ -168,7 +168,7 @@ function Core:read_db()
 	if self.cites == nil then
 		-- \cite{*}
 		self.cites = {}
-		for dummy,v in pairs(self.db) do
+		for dummy,v in pairs(self.database.db) do
 			self.cites[#self.cites + 1] = v
 		end
 	else
@@ -176,13 +176,13 @@ function Core:read_db()
 		local i = 1
 		while i <= n do
 			local k = self.cites[i].key
-			if self.db[k] == nil then
+			if self.database.db[k] == nil then
 				self:warning("I don't find a database entry for \"" .. k .. "\"")
 				table.remove(self.cites,i)
 				i = i - 1
 				n = n - 1
 			else
-				self.cites[i] = self.db[k]
+				self.cites[i] = self.database.db[k]
 			end
 			i = i + 1
 		end
@@ -198,20 +198,130 @@ function Core:dispose()
 	if self.blg ~= nil then self.blg:close() self.blg = nil end
 end
 
+-- from bibtex.web
+local char_width = {}
+char_width[" "] = 278
+char_width["!"] = 278
+char_width["\""] = 500
+char_width["#"] = 833
+char_width["$"] = 500
+char_width["%"] = 833
+char_width["&"] = 778
+char_width["'"] = 278
+char_width["("] = 389
+char_width[")"] = 389
+char_width["*"] = 500
+char_width["+"] = 778
+char_width[","] = 278
+char_width["-"] = 333
+char_width["."] = 278
+char_width["/"] = 500
+char_width["0"] = 500
+char_width["1"] = 500
+char_width["2"] = 500
+char_width["3"] = 500
+char_width["4"] = 500
+char_width["5"] = 500
+char_width["6"] = 500
+char_width["7"] = 500
+char_width["8"] = 500
+char_width["9"] = 500
+char_width[":"] = 278
+char_width[";"] = 278
+char_width["<"] = 278
+char_width["="] = 778
+char_width[">"] = 472
+char_width["?"] = 472
+char_width["@"] = 778
+char_width["A"] = 750
+char_width["B"] = 708
+char_width["C"] = 722
+char_width["D"] = 764
+char_width["E"] = 681
+char_width["F"] = 653
+char_width["G"] = 785
+char_width["H"] = 750
+char_width["I"] = 361
+char_width["J"] = 514
+char_width["K"] = 778
+char_width["L"] = 625
+char_width["M"] = 917
+char_width["N"] = 750
+char_width["O"] = 778
+char_width["P"] = 681
+char_width["Q"] = 778
+char_width["R"] = 736
+char_width["S"] = 556
+char_width["T"] = 722
+char_width["U"] = 750
+char_width["V"] = 750
+char_width["W"] =1028
+char_width["X"] = 750
+char_width["Y"] = 750
+char_width["Z"] = 611
+char_width["["] = 278
+char_width["\\"] = 500
+char_width["]"] = 278
+char_width["^"] = 500
+char_width["_"] = 278
+char_width["`"] = 278
+char_width["a"] = 500
+char_width["b"] = 556
+char_width["c"] = 444
+char_width["d"] = 556
+char_width["e"] = 444
+char_width["f"] = 306
+char_width["g"] = 500
+char_width["h"] = 556
+char_width["i"] = 278
+char_width["j"] = 306
+char_width["k"] = 528
+char_width["l"] = 278
+char_width["m"] = 833
+char_width["n"] = 556
+char_width["o"] = 500
+char_width["p"] = 556
+char_width["q"] = 528
+char_width["r"] = 392
+char_width["s"] = 394
+char_width["t"] = 389
+char_width["u"] = 556
+char_width["v"] = 528
+char_width["w"] = 722
+char_width["x"] = 528
+char_width["y"] = 528
+char_width["z"] = 444
+char_width["{"] = 500
+char_width["|"] =1000
+char_width["}"] = 500
+char_width["~"] = 500
+
+-- コントロールシークエンスとか無視している．
+local function get_width(s)
+	local width = 0
+	for c in string.utfcharacters(s) do
+		local w = char_width[c]
+		if w == nil then width = width + 500
+		else width = width + w end
+	end
+	return width
+end
+
 function Core:get_longest_label()
-	local max_len = 0
-	local max_len_label = nil
+	local max_width = 0
+	local max_width_label = nil
 	for i = 1, #self.cites do
 		local label
 		if self.cites[i].label ~= nil then
 			label = self.cites[i].label
-			if label:len() > max_len then
-				max_len = label:len()
-				max_len_label = label
+			local width = get_width(label)
+			if width > max_width then
+				max_width = width
+				max_width_label = label
 			end
 		end
 	end
-	return max_len_label
+	return max_width_label
 end
 
 function Core:output(s)
@@ -333,7 +443,7 @@ function Core:outputthebibliography()
 	end
 
 	-- output
-	self:outputline(self.preamble)
+	self:outputline(self.database.preamble)
 	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)

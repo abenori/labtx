@@ -19,10 +19,6 @@ metatableに__real_fieldsと__extra_fieldsを用意
 __real_fieldsはdbとかのコピーのつもり．__extra_fieldsは構築後に変更されたフィールドを保持
 __index，__newindexは書き換えてある，metatable.__conversionsを通した値を返す
 metatable.__conversionsは親Database.conversionsのコピー
-
-BibDatabase: Databaseを継承
-  macros[**]でマクロが設定できる
- BibDatabase.read(file): fileを読む
 ]]
 
 -- Citationクラス，key,type,fields[],extra_fields[],extra_data[]

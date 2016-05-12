@@ -1,8 +1,6 @@
 local Database = require "lbt-database"
 local BibDatabase = {}
 
-setmetatable(BibDatabase,{__index = Database})
-
 -- BibDatabase
 -- ヘルパ関数
 local function split_strings_nonestsep(str,sep)
@@ -273,13 +271,26 @@ function BibDatabase:apply_macro_to_str(str,bib)
 	return apply_macro_to_str(str,macros)
 end
 
+--[[
+BibDatabase
+  db: データベース
+  macros[**]でマクロが設定できる
+  preamble: プレアンブル
+  BibDatabase:read(file): fileを読む
+
+private:
+  base_db: 規定となるDatabase
+  macros_from_db: データベースからのマクロ（データベース名をキーとするテーブル）
+]]
 function BibDatabase.new()
-	local obj = Database.new()
+	local obj = {}
+	obj.base_db = Database.new()
 	obj.macros = {}
 	obj.macros_from_db = {}
 	obj.preamble = ""
+	obj.db = obj.base_db.db
 	local conv = function(val,data) return BibDatabase.apply_macro_to_str(obj,val,data.bib) end
-	table.insert(obj.conversions,conv)
+	table.insert(obj.base_db.conversions,conv)
 	return setmetatable(obj,{__index = BibDatabase})
 end
 
@@ -292,7 +303,7 @@ function BibDatabase:read(file)
 	for dummy,v in pairs(c) do
 		v.extra_data.bib = file
 	end
-	self:add_db(c)
+	self.base_db:add_db(c)
 	return true
 end
 
