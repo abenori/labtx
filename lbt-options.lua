@@ -76,7 +76,7 @@ function option:helps()
 	length = length + 2
 	
 	for dummy,s in ipairs(self.options) do
-		local h = ""
+		local h
 		local valtype
 		if tostring(s[4]):lower() == "number" then valtype = "NUM"
 		else valtype = "VAL" end
