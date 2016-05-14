@@ -1,4 +1,5 @@
 \documentclass[a4paper]{ltjsarticle}
+\usepackage[hiragino-pron]{luatexja-preset}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{url}
@@ -25,6 +26,7 @@
 \NewDocumentCommand{\luastring}{v}{``\texttt{#1}''}
 %\NewDocumentCommand{\luavar}{v}{\texttt{#1}}
 \newcommand*{\luavar}[1]{\texttt{#1}}
+\NewDocumentCommand{\texcs}{v}{\texttt{#1}}
 \renewcommand{\theenumi}{\inhibitglue（\arabic{enumi}）\inhibitglue}
 \renewcommand{\labelenumi}{\theenumi}
 \title{\LBibTeX}
@@ -34,28 +36,33 @@
 Luaによる\BibTeX の実装です．
 
 \section{使い方}
+TeX LiveまたはW32TeXをインストールしておいてください．
 拡張子がluaであるファイルを全てkpathseaが探せる場所においてください．
-例えばTeXLiveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．%$
-また，\url{lbibtex}または\url{lbibtex.bat}をPATHの通っている場所においてください．
+例えばTeX Liveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．%$
+また，
+\begin{itemize}
+\item UNIX: lbibtex.luaへのリンクを適当なbinディレクトリに作る．
+\item Windows (TeX Live): bin/win32/runscript.exeをbin/win32/lbibtex.exeとしてコピーする．
+\item W32TeX: bin/win32/runscr.exeをbin/win32/lbibtex.exeとしてコピーする．
+\end{itemize}
+とします．
+または，代わりに\url{lbibtex}（UNIX）または\url{lbibtex.bat}（Windows）をPATHの通っている場所におくことでも実行が可能になります．
 
-\begin{quote}
-\verb|$ bibtex sample|
-\end{quote}
+\begin{lstlisting}[language=bash]
+$ bibtex sample
+\end{lstlisting}
 としていた代わりに
-\begin{quote}
-\verb|$ lbibtex sample|
-\end{quote}
+\begin{lstlisting}[language=bash]
+$ lbibtex sample
+\end{lstlisting}
 とします．つまり，sample.texを処理するには
-\begin{quote}
-\begin{verbatim}
+\begin{lstlisting}[language=bash]
 $ latex sample.tex
 $ lbibtex sample
 $ latex sample.tex
 $ latex sample.tex
-\end{verbatim}
-\end{quote}
+\end{lstlisting}
 とします．
-（現在のところ）オプションはありません．
 文字コードは（現在のところ）UTF-8に限定されています．
 
 
@@ -143,7 +150,7 @@ Lua言語によりスタイルを記述することができます．kpathseaか
 グローバル変数BibTeXを通じ，各種設定などを行います．
 多くの場合，次のような流れになるでしょう．
 \begin{enumerate}
-\item \luavar{BibTeX.blockseparator}に，テンプレート設定で使うセパレータを設定する（項\ref{subsec:テンプレート設定}）．
+\item \luavar{BibTeX.blockseparator}に，テンプレート設定で使うセパレータを設定する．
 \item \luavar{BibTeX.templates}と\luavar{BibTeX.formatters}に実際にthebibliography環境として出力する内容のテンプレートを設定する．
 \item \luavar{BibTeX.crossref}にクロスリファレンスの設定を行う．
 \item \luavar{BibTeX.sorting}にソートの設定をする．
@@ -198,7 +205,7 @@ Lua言語によりスタイルを記述することができます．kpathseaか
 \luavar{BibTeX.templates}，\luavar{BibTeX.formatters}および\luavar{BibTeX.blockseparator}を通じて設定を行います．
 たとえば，エントリータイプarticleに対しては，著者，タイトル，ジャーナル，年をカンマ区切りで出し，最後にピリオドをつける場合は次のようにします．
 \begin{lstlisting}
-local FUnctions = require "lbt-funcs"
+local Functions = require "lbt-funcs"
 
 BibTeX.blockseparator = {{", ","."}}
 BibTeX.templates["article"] = "[$<author>:<\\emph{|$<title>|}>:$<journal>:$<year>]"
@@ -441,6 +448,17 @@ BibTeX:outputthebibliography()
 
 \section{関数}\label{sec:関数}
 有用そうな関数群やオリジナルの\BibTeX に存在していた関数が，モジュール\luavar{lbt-funcs}で定義されています．
+\begin{lstlisting}
+local Functions = require "lbt-funcs"
+x = Functions.text_prefix(str,num)
+\end{lstlisting}
+のように使ってください．
+
+\subsection{\luafunc{stable\_sort(list,comp)}}
+配列\luavar{list}に対して，安定なソートを行います．
+\luavar{comp}は比較関数です．
+省略された場合は標準演算子 \luafunc{<} が使われます．
+
 \subsection{\luafunc{text\_prefix(str,num)}}
 \luavar{str}の先頭\luavar{num}バイトを返します．
 ただし，文字を途中で切ることはなく，またコントロールシークエンス等や引数はバイト数に加算されません．
@@ -558,37 +576,109 @@ namearray[n - 1]separray[k]namearray[n]
 \subsection{\luafunc{remove\_TeX\_cs(s)}}
 \luavar{s}から\TeX のコントロールシークエンスを取り除いた文字列を得ます．
 
-%\section{文献データ}\label{sec:文献データ}
-%文献データは以下のようなテーブルに格納されています．
-%変数名を\luavar{Citation}とします．
-%\begin{description}[style=nextline]
-%\item[\luavar{Citation.type}]
-%エントリータイプ
-%\item[\luavar{Citation.key}]
-%エントリーキー
-%\item[\luavar{Citation.fields}]
-%フィールドが格納されているテーブル．マクロなどが施された結果が帰る．
-%\item[function \luafunc{Citation:clone()}]
-%自分の複製を作ります．
-%\item[function \luafunc{Citation:set\_field(key,cite,key1)}]
-%文献データ\luavar{cite}のキー\luastring{key1}のフィールドを\luastring{key}に設定します．
-%\item[function \luafunc{Citation:get\_raw\_field(key)}]
-%キー\luastring{key}のフィールドの生の値（マクロなど適用前）を返します．
-%\end{description}
-%
-%
-%\section{変数\luavar{BibTeX}}
-%変数\luavar{BibTeX}には，現在の\LBibTeX の状態が格納されています．
-%\subsection{各種状態}
-%\begin{description}[style=nextline]
-%\item[\luavar{BibTeX.style}]
-%スタイル名．
-%\item[\luavar{BibTeX.cites}]
-%引用されている文献一覧からなる配列．各々の中身は節\ref{sec:文献データ}の通り．
-%\item[\luavar{BibTeX.aux}]
-%auxの中身．
-%\end{description}
-%
+\section{文献データ}\label{sec:文献データ}
+文献データは以下のようなテーブルに格納されています．
+変数名を\luavar{Citation}とします．
+\begin{description}[style=nextline]
+\item[\luavar{Citation.type}]
+エントリータイプ
+\item[\luavar{Citation.key}]
+エントリーキー
+\item[\luavar{Citation.fields}]
+フィールドが格納されているテーブル．マクロなどが施された結果が帰る．
+\item[function \luafunc{Citation:clone()}]
+自分の複製を作ります．
+\item[function \luafunc{Citation:set\_field(key,cite,key1)}]
+文献データ\luavar{cite}のキー\luastring{key1}のフィールドを\luastring{key}に設定します．
+\item[function \luafunc{Citation:get\_raw\_field(key)}]
+キー\luastring{key}のフィールドの生の値（マクロなど適用前）を返します．
+\end{description}
+
+
+\section{変数\luavar{BibTeX}}
+変数\luavar{BibTeX}には，現在の\LBibTeX の状態が格納されています．
+\subsection{各種状態}
+\begin{description}[style=nextline]
+\item[\luavar{BibTeX.style}]
+スタイル名．
+\item[\luavar{BibTeX.cites}]
+引用されている文献一覧からなる配列．各々の中身は節\ref{sec:文献データ}の通り．
+\item[\luavar{BibTeX.db}]
+読み込まれたデータベースを表すテーブル．エントリーキー\luastring{key}には
+\begin{lstlisting}
+BibTeX.db["key"]
+\end{lstlisting}
+でアクセスできる．各々の中身は節\ref{sec:文献データ}の通り．
+\item[\luavar{BibTeX.aux}]
+\url{aux}ファイル名．
+\item[\luavar{BibTeX.aux\_contents}]
+\url{aux}ファイル名の中身．\url{aux}の各行の
+\begin{verbatim}
+\somecs{arg1}[arg2](arg3)
+\end{verbatim}
+という行から
+\begin{lstlisting}
+{somecs = {
+	{arg = "arg1", open = "{", close = "}"},
+	{arg = "arg2", open = "[", close = "]"},
+	{arg = "arg3", open = "(", close = ")"}
+}}
+\end{lstlisting}
+というテーブルが生成されて，ここに格納されている．
+括弧は上記の\luastring{{}}, \luastring{[]}, \luastring{()}が認識され，対応がとれているものとして扱われる．
+\end{description}
+
+\subsection{関数}
+\begin{description}[style=nextline]
+\item[\luafunc{BibTeX:output(str)}]
+\url{bbl}への出力を行う．
+\item[\luafunc{BibTeX:outputline(str)}]
+\url{bbl}への一行出力を行う．
+\item[\luafunc{BibTeX:outputthebibliography()}]
+項\ref{subsec:出力設定}に従い\url{bbl}へのthebibliography環境の出力を行う．
+\item[\luafunc{BibTeX:warning(str)}]
+文字列\luavar{str}を警告として出力する．出力は標準出力および\url{blg}に対して行われる．
+\item[\luafunc{BibTeX:error(str,exit\_code)}]
+文字列\luavar{str}をエラーとして出力し，終了コード\luavar{exit\_code}でプログラムを終了する．
+出力は標準エラー出力および\url{blg}に対して行われる．
+\item[\luafunc{BibTeX:log(str)}]
+\url{blg}に\luavar{str}を出力する．
+\item[\luafunc{BibTeX:message(str)}]
+標準出力に\luavar{str}を出力する．
+
+\end{description}
+
+\subsection{出力設定}\label{subsec:出力設定}
+\begin{description}[style=nextline]
+\item[\luavar{BibTeX.templates}]
+出力される\texcs{\bibitem}のフォーマットを指定する．
+書式は項\ref{subsec:テンプレート設定}に基づく．
+\item[\luavar{BibTeX.formatters}]
+\luavar{BibTeX.templates}，\luavar{BibTeX.crossref.templates}で使われる整形用の関数．
+書式は項\ref{subsec:テンプレート設定}に基づく．
+\item[\luavar{BibTeX.blockseparator}]
+\luavar{BibTeX.templates}，\luavar{BibTeX.crossref.templates}におけるブロックの区切り文字．
+\item[\luavar{BibTeX.crossref}]
+クロスリファレンスの遺伝を設定する．
+\item[\luavar{BibTeX.crossref.templates}]
+クロスリファレンスが定義されている場合に使われるフォーマット．
+値が定義されていない場合，\luavar{BibTeX.templates}が使われる．
+\item[\luavar{BibTeX.sorting.targets}]
+ソートの際に使われるフィールドキーを並べた配列．（正確には，テーブル\luavar{BibTeX.sorting.formatters}のキーを指定する．つまり，\luastring{key}を指定すると，関数\luafunc{BibTeX.sorting.formatters:key}が呼び出された結果が使われる．）
+\item[\luavar{BibTeX.sorting.lessthan}, \luavar{BibTeX.sorting.equal}]
+ソートのための比較関数．
+\item[\luavar{BibTeX.sorting.formatters}]
+ソート時のフィールドの整形関数からなるテーブル．比較の際に\luavar{self}と文献情報（節\ref{sec:文献データ}）が渡されて実行される．
+\item[\luafunc{BibTeX.sorting.label:make}]
+\luavar{self}と文献情報（節\ref{sec:文献データ}）を受け取り，ラベル名を返す関数を設定する．
+ラベルを作らない場合はnilを設定する．
+\item[\luafunc{self.label:add\_suffix}]
+同一のラベル名があった場合に，ラベル名を変更する処理をおこなう関数を設定する．デフォルトでは末尾にa,b,c,...を付加する．
+文献情報からなる配列（ソート済み）を受け，やはり配列を返す．
+\item[\luafunc{self.label:modify\_citations}]
+出力直前に実行される関数．最後の段階で文献情報を調整することができる．
+文献情報からなる配列（ソート済み）を受け，やはり配列を返す．
+\end{description}
 
 %\subsection{\luafunc{LBibTeX.citation\_check(citations,required)}}
 %\luavar{citations}に与えられた文献情報一覧を，\luavar{required}に従いチェックします．

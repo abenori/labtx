@@ -20,6 +20,7 @@ function Core.new()
 	local obj = {}
 	obj.database = BibDatabase.new()
 	obj.db = obj.database.db
+	obj.preamble = obj.database.preamble
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -443,7 +444,7 @@ function Core:outputthebibliography()
 	end
 
 	-- output
-	self:outputline(self.database.preamble)
+	self:outputline(self.preamble)
 	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)
