@@ -18,8 +18,7 @@ option.options = {
 }
 
 local files,msg = option:parse(arg)
-if files == nil then io.stderr:write("LBibTeX error: " .. msg) os.exit(1) end
-if #files == 0 then io.stderr:write("no input file") os.exit(1) end
+if files == nil then io.stderr:write("LBibTeX error: " .. msg .. "\n") os.exit(1) end
 
 local first = true
 for dummy,f in ipairs(files) do
@@ -65,5 +64,8 @@ for dummy,f in ipairs(files) do
 	BibTeX:dispose()
 	::continue::
 end
+if first == true then io.stderr:write("no input file\n") os.exit(1) end
 io.stdout:write("total time: " .. tostring(os.clock() - start_time) .. " sec\n")
+
+
 
