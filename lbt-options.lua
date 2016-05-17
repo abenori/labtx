@@ -77,7 +77,7 @@ function option:parse(args)
 		end
 		if b == false then
 			if any_exec ~= nil then any_exec(args[i])
-			else table.insert(remains,args[i])
+			else table.insert(remains,args[i]) end
 		end
 		i = i + 1
 	end
