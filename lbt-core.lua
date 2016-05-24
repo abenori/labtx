@@ -7,6 +7,8 @@ local CrossReference = require "lbt-crossref"
 local Template = require "lbt-template"
 local Functions = require "lbt-funcs"
 
+local lpeg = require "lpeg"
+
 -- bblを表す構造
 -- Core.aux, Core.style, Core.cites, Core.bibs, Core.bbl (stream)
 
@@ -57,34 +59,23 @@ function Core.read_aux(file)
 	aux.args = {}
 	local fp,msg = io.open(file,"r","UTF-8")
 	if fp == nil then return nil,msg end
+	local grammar = lpeg.P{
+		"start";
+		start = lpeg.Ct(lpeg.V("cs") * lpeg.V("args")),
+		cs = "\\" * lpeg.C((1 - lpeg.S("{(["))^0),
+		args = lpeg.Ct(((lpeg.V("arg1") + lpeg.V("arg2") + lpeg.V("arg3")) / function(a,b,c) return {open = a,arg = b,close = c} end)^0),
+		arg1 = lpeg.C("{") * lpeg.C((1 - lpeg.S("{}" ) + lpeg.V("inbra"))^0) * lpeg.C("}"),
+		arg2 = lpeg.C("(") * lpeg.C((1 - lpeg.S("{})") + lpeg.V("inbra"))^0) * lpeg.C(")"),
+		arg3 = lpeg.C("[") * lpeg.C((1 - lpeg.S("{}]") + lpeg.V("inbra"))^0) * lpeg.C("]"),
+		inbra = "{" * (((1 - lpeg.S("{}")) + lpeg.V("inbra"))^0) * "}"
+	}
+
 	for line in fp:lines() do
-		if line:sub(1,1) == "\\" then
-			local p = line:find("[%[{%(]")
-			local cs
-			if p == nil then
-				cs = line
-				line = ""
-			else
-				cs = line:sub(2,p - 1)
-				line = line:sub(p)
-			end
+		local p = grammar:match(line)
+		if p ~= nil then
+			local cs = p[1]
 			if aux.args[cs] == nil then aux.args[cs] = {} end
-			local args = {}
-			while true do
-				local op = line:sub(1,1)
-				local cld
-				if op == "{" then cld = "}"
-				elseif op == "(" then cld = ")"
-				elseif op == "[" then cld = "]"
-				else break end
-				local q
-				p,q = line:find("%b" .. op .. cld)
-				if p ~= nil then
-					table.insert(args,{arg = line:sub(p + 1,q - 1),open = op, close = cld})
-					line = line:sub(q + 1)
-				else break end
-			end
-			table.insert(aux.args[cs],args)
+			table.insert(aux.args[cs],p[2])
 		end
 	end
 	fp:close()
