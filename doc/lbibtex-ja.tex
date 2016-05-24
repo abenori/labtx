@@ -284,7 +284,7 @@ end
 が出力されます．
 \item formattersにもtemplatesのような書式が使えます．たとえば上の\luafunc{BibTeX.formatters:author\_editor}の例は
 \begin{lstlisting}
-function BibTeX.formatters.author_editor = "$<author|editor>"
+BibTeX.formatters.author_editor = "$<author|editor>"
 \end{lstlisting}
 %$
 と書くこともできます．
