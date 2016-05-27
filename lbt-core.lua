@@ -18,10 +18,17 @@ local stderr = io.stderr
 local stdout = io.stdout
 local exit = os.exit
 
+local function find(array,key)
+	for i,k in ipairs(array) do
+		if k == key then return i end
+	end
+	return nil
+end
+
 function Core.new()
 	local obj = {}
 	obj.database = BibDatabase.new()
-	obj.db = obj.database.db
+	local inherit_table_keys = {"preamble","key"}
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -41,7 +48,18 @@ function Core.new()
 	obj.sorting.targets = lbibtex_default.sorting.targets
 	obj.label = lbibtex_default.label -- obj.label.make, obj.label.add_suffix
 	obj.modify_citations = nil
-	return setmetatable(obj,{__index = Core})
+	return setmetatable(obj,{
+	__index = 
+		function(table,key)
+			if find(inherit_table_keys,key) ~= nil then return table.database[key]
+			else return Core[key] end
+		end,
+	__newindex = 
+		function(table,key,value)
+			if find(inherit_table_keys,key) ~= nil then table.database[key] = value
+			else Core[key] = value end
+		end
+	})
 end
 
 local function includeskey(table,key)
@@ -434,8 +452,7 @@ function Core:outputthebibliography()
 	end
 
 	-- output
-	if self.preamble ~= nil and self.preamble ~= "" then self:outputline(self.preamble) end
-	self:outputline(self.database.preamble)
+	self:outputline(self.preamble)
 	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	self:outputcites(formatter)
