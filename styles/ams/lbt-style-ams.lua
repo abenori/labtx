@@ -246,6 +246,7 @@ function ams_styles.formatters:crossref(c)
 end
 
 function ams_styles.modify_citations(self,cites)
+	if #cites == 0 then return cites end
 	local lastauthor = cites[1].fields["author"]
 	for i = 2,#cites do
 		local author = cites[i].fields["author"]
