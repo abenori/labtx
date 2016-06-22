@@ -370,3 +370,66 @@ function Template.new(separators)
 end
 
 return Template
+
+--local blocknest = 1
+--
+--function Template:make_block(table)
+--	return function(c)
+--		local block = Block.new(self.blockseparator[blocknest])
+--		local sepnumber = 1
+--		for i = 0, #table / 2 - 1 do
+--			local a = table[2*i + 1](c)
+--			block:addarrayitem(a)
+--			if i > 1 and table[2 * i] ~= nil then block:setseparator(sepnumber,array_to_string(table[2*i](c))) end
+--			sepnumber = sepnumber + #a
+--		end
+--		return {block:tostring()}
+--	end
+--end
+--
+--function Template:make_format(table)
+--	local ff = {}
+--	for i,func in ipairs(table) do
+--		local f = self.formatters[table[i]]
+--		if type(f) ~= "function" then
+--			ff[i] = function(dummy,c)
+--				local r = c.fields[table[i]]
+--				if r == nil then return nil
+--				else return tostring(r) end
+--			end
+--		else
+--			ff[i] = f
+--		end
+--	end
+--	return function(c)
+--		for i = 1,#table do
+--			local s = ff[i](self.formatters,c)
+--			if s ~= nil then
+--				if type(s) == "table" then
+--					if not isempty(s) then return s end
+--				else
+--					if s ~= "" then return {s} end
+--				end
+--			end
+--		end
+--		return {""}
+--	end
+--end
+--
+--local template = lpeg.V("template")
+--local block = lpeg.V("block")
+--local blocksep = lpeg.V("blocksep")
+--local format = lpeg.V("func")
+--local isempty = lpeg.V("isempty")
+--local funcname = lpeg.C((1 - lpeg.S("|>"))^1)
+--local str = lpeg.Cf((lpeg.C((1 - lpeg.S("[]|%:<>") - lpeg.P("$<"))^1) + ("%" * lpeg.C(lpeg.S("[]|%:<>"))) + ("%$" * lpeg.C("<")))^1,function(a,b) return a .. b end)
+--
+--local p = lpeg.P{
+--	"main";
+--	main = template * (1 * lpeg.Cc(nil))^(-1),
+--	template = lpeg.Ct((block + format + isempty + (str / function(s) return function(c) return s end end))^0) / Template.make_template,
+--	block = (lpeg.Carg(1) * lpeg.Ct("[" * template * (":" * blocksep * template)^0 * "]")) / Template.make_block,
+--	blocksep = ("@<" * lpeg.C(str) * ">") + lpeg.Cc(nil),
+--	format = (lpeg.Carg(1) * lpeg.Ct("$<" * (funcname * "|")^0 * funcname * ">")) / Template.make_format,
+--	isempty = (lpeg.Carg(1) * "<" * template * "|" * template * "|" * template * ">") / Template.make_threeargtemplate
+--}

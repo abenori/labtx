@@ -1,6 +1,8 @@
 local CrossReference = {}
 CrossReference.all_type = ""
 
+local lbtdebug = require "lbt-debug"
+
 --[[
 reference_key_name, override, all, mincrossrefs
 
@@ -120,6 +122,10 @@ end
 
 
 function CrossReference:modify_citations(cites,db)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(cites,"table")
+		lbtdebug.typecheck(db,"table")
+	end
 --	local obj = {reference_key_name = "crossref",override = {},inherit = {}, except = {},all = {},mincrossrefs=1}
 	local all_type = CrossReference.all_type
 	local inherit_table = modify_table(self.inherit)
@@ -215,6 +221,10 @@ end
 
 
 function CrossReference:make_formatter(orig_formatter,crossref_formatter)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(orig_formatter,"table")
+		lbtdebug.typecheck(crossref_formatter,"table")
+	end
 	local f = {}
 	for k,v in pairs(orig_formatter) do
 		if crossref_formatter[k] == nil then

@@ -1,6 +1,6 @@
 local Core = {}
 
-local debug = require "lbt-debug"
+local lbtdebug = require "lbt-debug"
 
 local BibDatabase = require "lbt-bibdb"
 local CrossReference = require "lbt-crossref"
@@ -70,6 +70,7 @@ local function includeskey(table,key)
 end
 
 function Core.read_aux(file)
+	if lbtdebug.debugmode then lbtdebug.typecheck(file,"string") end
 	local aux = {}
 	aux.citekeys = {}
 	aux.database = {}
@@ -145,6 +146,7 @@ end
 
 
 function Core:load_aux(file)
+	if lbtdebug.debugmode then lbtdebug.typecheck(file,"string") end
 	local aux = Core.read_aux(file)
 	self.aux_contents = aux
 	self.cites = aux.citekeys
@@ -348,6 +350,7 @@ end
 
 
 function Core:outputcites(formatter)
+	if lbtdebug.debugmode then lbtdebug.typecheck(formatter,"table") end
 	for i = 1, #self.cites do
 		local t = self.cites[i].type
 		if t ~= nil then
@@ -390,7 +393,7 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 			else r = r(formatters,rhs) end
 			if r ~= nil then
 				if equal(l,r) == false then
-					if debug.debug == true then
+					if lbtdebug.debugmode == true then
 						print("for comparing " .. lhs.key .. " and " .. rhs.key .. ", " .. target .. " is used, the values are:")
 						print(l)
 						print(r)
@@ -407,6 +410,25 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 end
 
 function Core:outputthebibliography()
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(self.blockseparator,"table")
+		lbtdebug.typecheck(self.templates,"table")
+		lbtdebug.typecheck(self.formatters,"table")
+		lbtdebug.typecheck(self.crossref,"table")
+		lbtdebug.typecheck(self.crossref.templates,"table")
+		lbtdebug.typecheck(self.label,"table")
+		lbtdebug.typecheck(self.label.make,"function",true)
+		lbtdebug.typecheck(self.label.add_suffix,"function",true)
+		lbtdebug.typecheck(self.sorting,"table",true)
+		if self.sorting ~= nil then
+			lbtdebug.typecheck(self.sorting.targets,"table",true)
+			lbtdebug.typecheck(self.sorting.formatters,"table",true)
+		end
+		lbtdebug.typecheck(self.modify_citations,"function",true)
+	end
+	
+
+
 	-- formatter生成
 	local template = Template.new(self.blockseparator)
 	local formatter,cross_formatter,msg
@@ -433,7 +455,6 @@ function Core:outputthebibliography()
 	end
 	-- label suffix
 	if self.label.make ~= nil and self.label.add_suffix ~= nil then
-		if type(self.label.add_suffix) ~= "function" then self:error("style file error: label.add_suffix is not a function") return end
 		self.cites = self.label:add_suffix(self.cites)
 	end
 	
@@ -447,7 +468,6 @@ function Core:outputthebibliography()
 
 	-- last modification
 	if self.modify_citations ~= nil then
-		if type(self.modify_citations) ~= "function" then self:error("style file error: modify_citations is not a function") return end
 		self.cites = self:modify_citations(self.cites)
 	end
 
@@ -460,12 +480,17 @@ function Core:outputthebibliography()
 end
 
 function Core:warning(s)
+	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
 	self.warning_count = self.warning_count + 1
 	stdout:write("LBibTeX warning: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX warning: " .. s .. "\n") end
 end
 
 function Core:error(s,exit_code)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(s,"string")
+		lbtdebug.typecheck(exit_code,"number")
+	end
 	stderr:write("LBibTeX error: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
 	if exit_code == nil then exit_code = 1 end
@@ -474,10 +499,12 @@ function Core:error(s,exit_code)
 end
 
 function Core:log(s)
+	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 function Core:message(s)
+	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
 	stdout:write(s .. "\n")
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end

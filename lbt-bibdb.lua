@@ -1,6 +1,8 @@
 local Database = require "lbt-database"
 local BibDatabase = {}
 
+local lbtdebug = require "lbt-debug"
+
 -- BibDatabase
 -- ヘルパ関数
 local function split_strings_nonestsep(str,sep)
@@ -264,6 +266,10 @@ end
 
 
 function BibDatabase:apply_macro_to_str(str,bib)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(str,"string")
+		lbtdebug.typecheck(bib,"string",true)
+	end
 	local macros = {self.macros}
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
 		table.insert(macros,self.macros_from_db[bib])
@@ -295,6 +301,9 @@ function BibDatabase.new()
 end
 
 function BibDatabase:read(file)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(file,"string")
+	end
 	-- load databse
 	local c,p,m = read_database(file);
 	if c == nil then return false end

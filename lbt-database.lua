@@ -1,5 +1,7 @@
 local Database = {}
 
+local lbtdebug = require "lbt-debug"
+
 --[[
 Database
   Database.db: データベース
@@ -75,6 +77,10 @@ end
 
 
 function Citation.new(db,data)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(db,"table")
+		lbtdebug.typecheck(data,"table")
+	end
 	local obj = {}
 	for k,v in pairs(data) do
 		if k ~= "extra_data" then obj[k] = v end
@@ -116,6 +122,7 @@ end
 -- set_field(key,val)でkeyにvalを入れる
 -- set_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
 function Citation:set_field(key,a,b)
+	if lbtdebug.debugmode then lbtdebug.typecheck(key,"string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	if b == nil then
@@ -127,12 +134,14 @@ function Citation:set_field(key,a,b)
 end
 
 function Citation:delete_field(key)
+	if lbtdebug.debugmode then lbtdebug.typecheck(key,"string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	meta.__extra_fields[key] = nil_data
 end
 
 function Citation:get_raw_field(key)
+	if lbtdebug.debugmode then lbtdebug.typecheck(key,"string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	local val = meta.__extra_fields[key]
@@ -147,6 +156,7 @@ function Database.new()
 end
 
 function Database:add_db(data)
+	if lbtdebug.debugmode then lbtdebug.typecheck(data,"table") end
 	for dummy,v in pairs(data) do
 		self.db[v.key] = Citation.new(self,v)
 	end
