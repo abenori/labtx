@@ -169,11 +169,17 @@ end
 function Core:read_db()
 	for i = 1,#self.bibs do
 		local bibfile = kpse.find_file(self.bibs[i],"bib")
-		if bibfile == nil or self.database:read(bibfile) == false then
-			self:dispose()
+		if bibfile == nil then 
 			return false,"Cannot find Database file " .. self.bibs[i]
+		end
+		local b,m = self.database:read(bibfile)
+		if b == false then
+			return false,m .. " in Databse " .. self.bibs[i]
 		else
 			self:message("Database file #" .. tostring(i) .. ": " .. self.bibs[i])
+			for dummy,msg in ipairs(m) do
+				self:warning(msg .. " in " .. self.bibs[i] .. ", ignored")
+			end
 		end
 	end
 	if self.cites == nil then
@@ -358,7 +364,7 @@ function Core:outputcites(formatter)
 			if f == nil then
 				self:warning("no style is defined for " .. t)
 				f = formatter[""]
-				if f == nil then self:error("default style is not defined") end
+				if f == nil then self:error("default style is not defined",1) end
 			end
 			local s = "\\bibitem"
 			local label = self.cites[i].label
@@ -433,9 +439,9 @@ function Core:outputthebibliography()
 	local template = Template.new(self.blockseparator)
 	local formatter,cross_formatter,msg
 	formatter,msg = template:make(self.templates, self.formatters)
-	if formatter == nil then self:error(msg) return end
+	if formatter == nil then self:error(msg,1) return end
 	cross_formatter,msg = template:make(self.crossref.templates, self.formatters)
-	if cross_formatter == nil then self:error(msg) return end
+	if cross_formatter == nil then self:error(msg,1) return end
 	formatter = self.crossref:make_formatter(formatter,cross_formatter)
 	-- Cross Reference
 	self.cites = self.crossref:modify_citations(self.cites,self)
@@ -449,7 +455,7 @@ function Core:outputthebibliography()
 	if self.sorting ~= nil and self.sorting.targets ~= nil and #self.sorting.targets > 0 then
 		local sort_formatter
 		sort_formatter,msg = template:modify_functions(self.sorting.formatters)
-		if sort_formatter == nil then self:error(msg) return end
+		if sort_formatter == nil then self:error(msg,1) return end
 		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
 		self.cites = Functions.stable_sort(self.cites, sortfunc)
 	end
@@ -493,9 +499,10 @@ function Core:error(s,exit_code)
 	end
 	stderr:write("LBibTeX error: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
-	if exit_code == nil then exit_code = 1 end
-	self:dispose()
-	exit(exit_code)
+	if exit_code ~= nil then
+		self:dispose()
+		exit(exit_code)
+	end
 end
 
 function Core:log(s)

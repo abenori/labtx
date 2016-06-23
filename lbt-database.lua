@@ -155,12 +155,17 @@ function Database.new()
 	return setmetatable(obj,{__index = Database})
 end
 
-function Database:add_db(data)
-	if lbtdebug.debugmode then lbtdebug.typecheck(data,"table") end
-	for dummy,v in pairs(data) do
-		self.db[v.key] = Citation.new(self,v)
+function Database:add_db(c)
+	if lbtdebug.debugmode then
+		lbtdebug.typecheck(c,"table")
+		lbtdebug.typecheck(c.key,"string")
+	end
+	if self.db[c.key] == nil then
+		self.db[c.key] = Citation.new(self,c)
+		return true
+	else
+		return false,"Repeated entry: " .. c.key
 	end
 end
-
 
 return Database

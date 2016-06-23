@@ -306,14 +306,17 @@ function BibDatabase:read(file)
 	end
 	-- load databse
 	local c,p,m = read_database(file);
-	if c == nil then return false end
+	if c == nil then return false,p end
 	self.preamble = self.preamble .. p
 	self.macros_from_db[file] = m
+	local msg = {}
 	for dummy,v in pairs(c) do
 		v.extra_data.bib = file
+		local b
+		b,m = self.base_db:add_db(v)
+		if b == false then table.insert(msg,m) end
 	end
-	self.base_db:add_db(c)
-	return true
+	return true,msg
 end
 
 return BibDatabase

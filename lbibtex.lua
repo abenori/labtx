@@ -45,11 +45,11 @@ for dummy,f in ipairs(files) do
 	BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
 	local style = kpse.find_file("lbt-" .. BibTeX.style .. "_bst.lua","lua")
 	if style == nil then
-		BibTeX:error("style " .. BibTeX.style .. " is not found")
-		os.exit(3)
+		BibTeX:error("style " .. BibTeX.style .. " is not found",3)
 	end
 	BibTeX:message("The style file: " .. get_filename(style))
-	BibTeX:read_db()
+	local b,m = BibTeX:read_db()
+	if b == false then BibTeX:error(m .. "\n",1) end
 
 	--local style_file_exec = loadfile(style,"t")
 	local backup = {io = io,os = os}
@@ -60,7 +60,7 @@ for dummy,f in ipairs(files) do
 		io = backup.io
 		os = backup.os
 	end
-	xpcall(style_file_exec,function(e) backup.io.stderr:write(debug.traceback(tostring(e)) .. "\n") backup.os.exit(2) end)
+	xpcall(style_file_exec,function(e) backup.io.stderr:write(debug.traceback(tostring(e),2) .. "\n") backup.os.exit(2) end)
 	BibTeX:dispose()
 	::continue::
 end
