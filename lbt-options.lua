@@ -17,7 +17,7 @@ local function escape(str)
 	return str:gsub("([()%%.%[%]*+-?])","%%%1")
 end
 
--- b,i
+-- 戻り値：b,i
 -- i: 引数を食ったら一つ増やす
 -- b: true：オプションとして処理した，false：オプションじゃない，nil：失敗，iにメッセージ
 local function option_withoutarg(i,args,optname,action)

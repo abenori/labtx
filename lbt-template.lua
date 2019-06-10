@@ -18,6 +18,31 @@ $<A|B|C|...>：関数Aが呼び出され，その値が空ならばBが呼び出
 とすればよいだろうか．
 
 ユーザ定義関数は配列を渡すことで，ブロックの区切りを明示することができる．
+
+
+Template.new(separators)
+separators: 文字列からなる配列．
+戻り値: Template
+新しいオブジェクトを返す．ブロックのセパレータはseparatorsが使われる．
+
+Template:make(template,formatters)
+template: 文字列
+formatters: 関数からなるテーブル
+戻り値: 関数
+
+templateにはtemplate = "[$<author>:$<title>:...]"のような文字列を与える．
+これに対して，戻り値funcには整形関数が入る．これはbibフィールドを与えると文字列を返す関数である．
+
+templatesで指定できる書式は以下の通り．
+-- [**:**:**]：ブロック．あたえられた結合文字列を使って結合される．空文字列は無視される．ネスト可能．Template.blockseparator[nest]で結合部分/最後の文字列をどうにかできる．ピリオドは連続しないように処理される．:@S<***>とするとそこの区切り文字を***に変更する．
+-- <(LEFT)|(STR)|(RIGHT)>：STR != ""ならば(LEFT)(STR)(RIGHT)を出す，STR==""ならば空文字列
+-- $<A|B|C|...>：formatters:Aが呼び出され，その値が空ならばformatters:Bが呼び出され……となり，最初に空でないものが出力される．関数formatters:Aが見付からない場合は名前がAのfieldが呼ばれる．（例えば，$<title>は関数formatters:titleが定義されていなければタイトルそのものがでる．）Aの代わりに(A)とするとAはテンプレートとして解釈される．
+全ては%でエスケープできる．
+
+formattersには各々の項目を整形する関数を指定する．その書式は以下の通り．
+formatters:<field>(cite)
+cite: 文献データ
+戻り値: 文字列
 ]]
 
 local function isempty(array)
@@ -304,7 +329,7 @@ end
 Template.LastMsg = ""
 
 
-function Template:modify_functions(funcs)
+function Template:modify_formatters(funcs)
 	if type(funcs) ~= "table" then 
 		return nil,"Template.make: type error, type(formatters) = " .. type(funcs)
 	end
@@ -347,20 +372,11 @@ function Template:make_from_str(templ,funcs)
 	end
 end
 
-function Template:make(templs,funcs)
-	if type(templs) ~= "table" or type(funcs) ~= "table" then
-		return nil,"Template.make: type error, type(templates) = " .. type(templs) .. ", type(formatters) = " .. type(funcs)
+function Template:make(templ,funcs)
+	if type(templ) ~= "string" or type(funcs) ~= "table" then
+		return nil,"Template.make: type error, type(templates) = " .. type(templ) .. ", type(formatters) = " .. type(funcs)
 	end
-	local f = {}
-	local ff
-	local funcs_f,msg = self:modify_functions(funcs)
-	if funcs_f == nil then return nil,msg end
-	for k,v in pairs(templs) do
-		ff,msg = self:make_from_str(v,funcs_f)
-		if ff == nil then return nil,msg end
-		f[k] = ff
-	end
-	return f
+	return self:make_from_str(templ,funcs)
 end
 
 function Template.new(separators)

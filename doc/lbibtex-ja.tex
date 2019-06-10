@@ -38,7 +38,7 @@ Luaによる\BibTeX の実装です．
 \section{使い方}
 TeX LiveまたはW32TeXをインストールしておいてください．
 拡張子がluaであるファイルを全てkpathseaが探せる場所においてください．
-例えばTeX Liveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．%$
+例えばTeX Liveの標準設定では\url{$TEXMF/scripts}以下に置くことができます．\if0$\fi
 また，
 \begin{itemize}
 \item UNIX: lbibtex.luaへのリンクを適当なbinディレクトリに作る．
@@ -679,6 +679,15 @@ BibTeX.db["key"]
 出力直前に実行される関数．最後の段階で文献情報を調整することができる．
 文献情報からなる配列（ソート済み）を受け，やはり配列を返す．
 \end{description}
+
+\section{デバッグ}
+次のようにしておくと，デバッグに有用な情報がはき出されたりする……かもしれません．
+\begin{lstlisting}
+local lbtdebug = require "lbt-debug"
+lbtdebug.debugmode = true -- デバッグモードON
+
+-- 以下スタイルファイルの処理
+\end{lstlisting}
 
 %\subsection{\luafunc{LBibTeX.citation\_check(citations,required)}}
 %\luavar{citations}に与えられた文献情報一覧を，\luavar{required}に従いチェックします．

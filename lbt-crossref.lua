@@ -1,5 +1,21 @@
+--[[
+lbt-crossref
+function lbt.crossref.new()
+戻り値: lbt-crossrefオブジェクト
+
+変数:
+  inherit, override: doc参照
+  allは何だっけ……？
+
+function CrossReference:modify_citations(cites,db)
+  クロスリファレンスの情報に基づき，文献データベースを改変する．
+-- cites: Citation (in lbt-database)．改変対象の文献データ．
+-- db: 参照するデータベース．
+]]
+
 local CrossReference = {}
 CrossReference.all_type = ""
+CrossReference.reference_key_name = "crossref"
 
 local lbtdebug = require "lbt-debug"
 
@@ -20,7 +36,7 @@ CrossReference.override["article"]["book"] = {
 ]]
 
 function CrossReference.new()
-	local obj = {reference_key_name = "crossref",override = {},inherit = {},all = {},mincrossrefs=2}
+	local obj = {override = {},inherit = {},all = {},mincrossrefs=2}
 	local function no_return_nil(table,key)
 		local x = rawget(table,key)
 		if x == nil then
@@ -220,23 +236,24 @@ function CrossReference:modify_citations(cites,db)
 end
 
 
-function CrossReference:make_formatter(orig_formatter,crossref_formatter)
+function CrossReference.make_formatter(orig_formatter,crossref_formatter,reference_key_name)
 	if lbtdebug.debugmode then
-		lbtdebug.typecheck(orig_formatter,"table")
-		lbtdebug.typecheck(crossref_formatter,"table")
+		lbtdebug.typecheck(orig_formatter,"function")
+		lbtdebug.typecheck(crossref_formatter,"function",true)
+		lbtdebug.typecheck(reference_key_name,"string",true)
 	end
-	local f = {}
-	for k,v in pairs(orig_formatter) do
-		if crossref_formatter[k] == nil then
-			f[k] = v
-		else
-			f[k] = function(c)
-				if c.fields[self.reference_key_name] == nil then return v(c)
-				else return crossref_formatter[k](c) end
+	if crossref_formatter == nil then return orig_formatter
+	else
+		if reference_key_name == nil then reference_key_name = "crossref" end
+		return function(c)
+			if c.fields[reference_key_name] == nil then return orig_formatter(c)
+			else
+				local rv = crossref_formatter(c)
+				if rv == nil then return orig_formatter(c)
+				else return rv end
 			end
 		end
 	end
-	return f
 end
 
 return CrossReference

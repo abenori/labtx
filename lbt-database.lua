@@ -36,7 +36,7 @@ local function fields_index(table,key)
 	if val == nil then val = meta.__real_fields[key] end
 	if val == nil then return nil end
 	if meta.__conversions == nil then return val end
-	for dummy,conv in ipairs(meta.__conversions) do
+	for _,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
 	return val
@@ -65,7 +65,7 @@ local function fields_enum(table,index)
 	end
 	if val == nil then return nil,nil end
 	if meta.__conversions == nil then return newindex,val end
-	for dummy,conv in ipairs(meta.__conversions) do
+	for _,conv in ipairs(meta.__conversions) do
 		val = conv(val,meta.__extra_data)
 	end
 	return newindex,val

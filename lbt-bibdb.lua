@@ -1,3 +1,17 @@
+--[[
+lbt-bibdata: データベース管理．
+function lbt-bibdata.new()
+戻り値: lbt-bibdataオブジェクト
+
+BibDatabase:read(file)
+file: 文字列
+データベースファイルfileからデータベースを読み込む．
+
+-- メンバ変数
+-- db: データベース．lbt-databaseオブジェクト
+-- preamble: 文字列．プレアンブル．
+-- macros: 文字列からなる配列．macros["macro"] = "string"と代入しておくと，データ内の"macro"が"string"で自動で置き換えられる．]]
+
 local Database = require "lbt-database"
 local BibDatabase = {}
 
@@ -274,7 +288,8 @@ function BibDatabase:apply_macro_to_str(str,bib)
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
 		table.insert(macros,self.macros_from_db[bib])
 	end
-	return apply_macro_to_str(str,macros)
+	local rv = apply_macro_to_str(str,macros)
+	return rv
 end
 
 --[[

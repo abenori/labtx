@@ -6,6 +6,7 @@ local BibDatabase = require "lbt-bibdb"
 local CrossReference = require "lbt-crossref"
 local Template = require "lbt-template"
 local Functions = require "lbt-funcs"
+local Language = require "lbt-lang"
 
 local lpeg = require "lpeg"
 
@@ -28,7 +29,7 @@ end
 function Core.new()
 	local obj = {}
 	obj.database = BibDatabase.new()
-	local inherit_table_keys = {"preamble","key"}
+	local inherit_table_keys = {"preamble","key","db","macros"}
 	obj.style = ""
 	obj.aux = ""
 	obj.cites = {}
@@ -36,6 +37,7 @@ function Core.new()
 	obj.bbl = nil
 	obj.blg = nil
 	-- 以下アウトプット用設定
+	obj.languages = {}
 	obj.crossref = CrossReference.new()
 	obj.crossref.templates = {}
 	obj.blockseparator = {}
@@ -60,6 +62,16 @@ function Core.new()
 			else Core[key] = value end
 		end
 	})
+end
+
+local function get_language(self,c)
+	for key,val in pairs(self.languages) do
+		if val.is ~= nil and val.is(c) == true then return key end
+	end
+	for key,val in pairs(self.languages) do
+		if val.is == nil and c.fields["langid"] == key then return key end
+	end
+	return nil
 end
 
 local function includeskey(table,key)
@@ -313,18 +325,24 @@ char_width["|"] =1000
 char_width["}"] = 500
 char_width["~"] = 500
 
--- コントロールシークエンスとか無視している．
+-- {}内を全て無視する．
 local function get_width(s)
 	local width = 0
+	local nest = 0
 	for c in string.utfcharacters(s) do
-		local w = char_width[c]
-		if w == nil then width = width + 500
-		else width = width + w end
+		if c == "{" then nest = nest + 1
+		elseif c == "}" then nest = nest - 1
+		end
+		if nest == 0 then
+			local w = char_width[c]
+			if w == nil then width = width + 500
+			else width = width + w end
+		end
 	end
 	return width
 end
 
-function Core:get_longest_label()
+local function get_longest_label(self)
 	local max_width = 0
 	local max_width_label = nil
 	for i = 1, #self.cites do
@@ -354,32 +372,22 @@ local function trim(str)
 	return str:gsub("^[ \n\t]*",""):gsub("[ \n\t]*$","")
 end
 
-
 function Core:outputcites(formatter)
 	if lbtdebug.debugmode then lbtdebug.typecheck(formatter,"table") end
 	for i = 1, #self.cites do
-		local t = self.cites[i].type
-		if t ~= nil then
-			local f = formatter[t]
-			if f == nil then
-				self:warning("no style is defined for " .. t)
-				f = formatter[""]
-				if f == nil then self:error("default style is not defined",1) end
-			end
-			local s = "\\bibitem"
-			local label = self.cites[i].label
-			if label ~= nil then
-				s = s .. "[" .. label .. "]"
-			end
-			local key = self.cites[i].key
-			s = s .. "{" .. key .. "}"
-			self:outputline(s)
-			s = f(self.cites[i])
-			s = tostring(s);
---			s = s:gsub("{([A-Z])}","%1")
-			self:outputline(trim(s:gsub("  +"," ")))
-			self:outputline("")
+		local s = "\\bibitem"
+		local label = self.cites[i].label
+		if label ~= nil then
+			s = s .. "[" .. label .. "]"
 		end
+		local key = self.cites[i].key
+		s = s .. "{" .. key .. "}"
+		self:outputline(s)
+		local s,msg = formatter(self.cites[i])
+		if s == nil then self:error(msg,1) return end
+		s = tostring(s)
+		self:outputline(trim(s:gsub("  +"," ")))
+		self:outputline("")
 	end
 end
 
@@ -415,6 +423,18 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 	end
 end
 
+local function template_strs_to_functions(templ,formatters,field_formatters)
+	local fs = {}
+	for key,val in pairs(formatters) do
+		if type(val) == "string" then
+			local f,msg = templ:make_from_str(val,field_formatters)
+			if f == nil then return nil,msg end
+			fs[key] = f
+		else fs[key] = val end
+	end
+	return fs
+end
+
 function Core:outputthebibliography()
 	if lbtdebug.debugmode then
 		lbtdebug.typecheck(self.blockseparator,"table")
@@ -434,27 +454,115 @@ function Core:outputthebibliography()
 	end
 	
 
-
 	-- formatter生成
 	local template = Template.new(self.blockseparator)
-	local formatter,cross_formatter,msg
-	formatter,msg = template:make(self.templates, self.formatters)
-	if formatter == nil then self:error(msg,1) return end
-	cross_formatter,msg = template:make(self.crossref.templates, self.formatters)
-	if cross_formatter == nil then self:error(msg,1) return end
-	formatter = self.crossref:make_formatter(formatter,cross_formatter)
+	-- 各フィールドを整形する関数を用意．
+	local default_field_formatters = template:modify_formatters(self.formatters)
+	local lang_field_formatters = {}
+	for langname,lang in pairs(self.languages) do
+		if lang.formatters ~= nil then
+			lang_field_formatters[langname] = template:modify_formatters(lang.formatters)
+		end
+	end
+	field_formatters = {}
+	for key,val in pairs(default_field_formatters) do
+		field_formatters[key] = function(obj,c)
+			local l = get_language(self,c)
+			if l == nil or lang_field_formatters[l] == nil or lang_field_formatters[l][key] == nil then
+				return default_field_formatters[key](default_field_formatters,c)
+			else
+				return lang_field_formatters[l][key](lang_field_formatters[l],c)
+			end
+		end
+	end
+	-- 整形関数用意
+	local default_entry_formatters = {} -- 整形関数のテーブルを入れる
+	local lang_entry_formatters = {} -- 言語ごとの整形関数のテーブルを入れる．lfs[entry type][language] = function
+	for key,val in pairs(self.templates) do
+		local f,msg
+		if type(val) == "string" then
+			f,msg = template:make(val,field_formatters)
+			if f == nil then self:error(msg,1) return end
+			default_entry_formatters[key] = f
+		else default_entry_formatters[key] = val end
+		for langname,lang in pairs(self.languages) do
+			if lang.templates[key] ~= nil then
+				lang_entry_formatters[key] = {}
+				if type(lang.templates[key]) == "string" then
+					f,msg = template:make(lang.templates[key],field_formatters)
+					if f == nil then self:error(msg,1) return end
+					lang_entry_formatters[key][langname] = f
+				else lang_entry_formatters[key][langname] = lang.templates[key] end
+			end
+		end
+	end
+	local entry_formatter_sub = function(c,ctype,lang)
+		if lang_entry_formatters[ctype] == nil or lang == nil or lang_entry_formatters[ctype][lang] == nil then
+			return default_entry_formatters[ctype]
+		else
+			return lang_entry_formatters[ctype][lang]
+		end
+	end
+	local entry_formatter = function(c)
+		local l = get_language(self,c)
+		local f = entry_formatter_sub(c,c.type,l)
+		if f == nil then
+			self:warning("No template for the entry " .. c.type)
+			f = entry_formatter_sub(c,"",l)
+			if f == nil then self:error("Cannot generated an item for the entry " .. c.type,1) return nil end
+			return f(c)
+		else return f(c) end
+	end
+
+	-- CrossReferenceにも同じことをする．
+	default_crossref_entry_formatters = {}
+	lang_crossref_entry_formatters = {}
+	for key,val in pairs(self.crossref.templates) do
+		if type(val) == "string" then
+			local f,msg = template:make(val,field_formatters)
+			if f == nil then self:error(msg,1) return end
+			default_crossref_entry_formatters[key] = f
+		else default_crossref_entry_formatters[key] = val end
+		for langname,lang in pairs(self.languages) do
+			if lang.crossref ~= nil and lang.crossref.templates ~= nil and lang.crossref.templates[key] ~= nil then
+				lang_crossref_entry_formatters[key] = {}
+				if type(lang.crossref.templates[key]) == "string" then
+					local f,msg = template:make(lang.crossref.templates[key],field_formatters)
+					if f == nil then self:error(msg,1) return end
+					lang_crossref_entry_formatters[key][langname] = f
+				else lang_crossref_entry_formatters[key][langname] = lang.crossref.templates[key] end
+			end
+		end
+	end
+	local crossref_entry_formatter_sub = function(c,ctype,lang)
+		if lang_crossref_entry_formatters[ctype] == nil or lang == nil or lang_crossref_entry_formatters[ctype][lang] == nil then
+			return default_crossref_entry_formatters[ctype]
+		else
+			return lang_crossref_entry_formatters[ctype][lang]
+		end
+	end
+	local crossref_entry_formatter = function(c)
+		local l = get_language(self,c)
+		local f = crossref_entry_formatter_sub(c,c.type,l)
+		if f == nil then
+			f = entry_formatter_sub(c,"",l)
+			if f == nil then return nil end
+			return f(c)
+		else return f(c) end
+	end
+	local output_cite_function = CrossReference.make_formatter(entry_formatter,crossref_entry_formatter)
 	-- Cross Reference
-	self.cites = self.crossref:modify_citations(self.cites,self)
+	self.cites = self.crossref:modify_citations(self.cites,self.database)
 	-- label生成
 	if self.label.make ~= nil then
-		for dummy,c in ipairs(self.cites) do
+		for _,c in ipairs(self.cites) do
 			c.label = self.label:make(c)
 		end
 	end
 	-- sort
 	if self.sorting ~= nil and self.sorting.targets ~= nil and #self.sorting.targets > 0 then
 		local sort_formatter
-		sort_formatter,msg = template:modify_functions(self.sorting.formatters)
+		sort_formatter,msg = template:modify_formatters(self.sorting.formatters)
 		if sort_formatter == nil then self:error(msg,1) return end
 		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
 		self.cites = Functions.stable_sort(self.cites, sortfunc)
@@ -464,7 +572,7 @@ function Core:outputthebibliography()
 		self.cites = self.label:add_suffix(self.cites)
 	end
 	
-	local longest_label = self:get_longest_label()
+	local longest_label = get_longest_label(self)
 	if longest_label == nil then longest_label = tostring(#self.cites) end
 
 	-- check citations
@@ -481,7 +589,7 @@ function Core:outputthebibliography()
 	self:outputline(self.preamble)
 	self:outputline("")
 	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
-	self:outputcites(formatter)
+	self:outputcites(output_cite_function)
 	self:outputline("\\end{thebibliography}")
 end
 

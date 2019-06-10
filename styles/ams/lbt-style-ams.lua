@@ -135,7 +135,7 @@ function ams_styles.formatters:book_volume_series_number(c)
 end
 
 function ams_styles.formatters:chapter_pages(c)
-	if c.fields["chapter"] == nil then return ams_styles.formatters.book_pages(c)
+	if c.fields["chapter"] == nil then return self:book_pages(c)
 	else 
 		local r = ""
 		if c.fields["type"] == nil then r = "ch.~"

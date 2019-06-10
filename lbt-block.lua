@@ -1,8 +1,38 @@
 local Block = {}
--- separatorは二つの配列{A,B}からなる
--- A,Bが配列の時，searatorは前からA[1],A[2],...,A[#A],A[#A],...,B[1],...,B[#B]
--- 長さが足りないときはAが削られる
--- AやBが文字列の時は長さ1の配列と同じ扱い．
+--[[
+文献出力のブロックを保持する．
+[X1,X2,...,Xn]という形の文字列の並びに対して，
+X1<S1>X2<S2>....<S(n-1)>Xn
+という形の文字列を生成する．<Si>をセパレータと呼ぶ．
+
+Block.new(separator, contents)
+-- separator = {A,B}: A, Bは文字列からなる配列．
+-- contents: 文字列からなる配列．ブロックの中身
+-- 戻り値: なし
+新しいオブジェクトを生成する．
+separatorでセパレータを設定でき，前からA[1],A[2],...,A[#A],A[#A],...,B[1],...,B[#B]となる．
+AやBが文字列の時は長さ1の配列として扱われる．
+
+Block:additem(content)
+-- content: 文字列．追加する中身．
+-- 戻り値: なし
+ブロック末尾にcontentを追加する．
+
+Block:addarrayitem(contents)
+-- contents: 文字列からなる配列．
+-- 戻り値: なし
+contentsをその順番でブロック末尾に追加する．
+
+Block:tostring()
+-- 戻り値: 文字列
+現在のブロックを文字列として出力する．
+
+Block:setseparator(index, separator)
+-- index: 整数値
+-- separator: 文字列
+-- 戻り値: なし
+index番目のセパレータ<S(index)>をseparatorに設定する．これはBlock.newで指定されたセパレータを上書きする形で動く．
+]]
 
 local function addperiod(s)
 	if s:find("%.[ ~]*$") == nil then return s .. "."

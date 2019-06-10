@@ -21,7 +21,7 @@ local files,msg = option:parse(arg)
 if files == nil then io.stderr:write("LBibTeX error: " .. msg .. "\n") os.exit(1) end
 
 local first = true
-for dummy,f in ipairs(files) do
+for _,f in ipairs(files) do
 	if f:sub(1,1) == "-" then goto continue end
 	if first == true then first = false else io.stdout:write("\n") end
 	if f:sub(-4,-1):lower() ~= ".aux" then f = f .. ".aux" end
@@ -60,7 +60,7 @@ for dummy,f in ipairs(files) do
 		io = backup.io
 		os = backup.os
 	end
-	xpcall(style_file_exec,function(e) backup.io.stderr:write(debug.traceback(tostring(e),2) .. "\n") backup.os.exit(2) end)
+	xpcall(style_file_exec,function(e) backup.io.stderr:write(debug.traceback(tostring(e),2) .. "\n") io = backup.io os = backup.os end)
 	BibTeX:dispose()
 	::continue::
 end

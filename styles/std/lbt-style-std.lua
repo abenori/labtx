@@ -207,6 +207,7 @@ std_styles.crossref.templates["conference"] = std_styles.crossref.templates["inp
 
 std_styles.crossref.formatters = {}
 function std_styles.formatters:crossref(c)
+	if c.fields["crossref"] == nil then return nil end
 	return c.fields["crossref"]:lower()
 end
 
