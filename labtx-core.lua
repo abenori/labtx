@@ -1,19 +1,18 @@
 local Core = {}
 
-local lbtdebug = require "lbt-debug"
+local labtxdebug = require "labtx-debug"
 
-local BibDatabase = require "lbt-bibdb"
-local CrossReference = require "lbt-crossref"
-local Template = require "lbt-template"
-local Functions = require "lbt-funcs"
-local Language = require "lbt-lang"
+local BibDatabase = require "labtx-bibdb"
+local CrossReference = require "labtx-crossref"
+local Template = require "labtx-template"
+local Functions = require "labtx-funcs"
 
 local lpeg = require "lpeg"
 
 -- bblを表す構造
 -- Core.aux, Core.style, Core.cites, Core.bibs, Core.bbl (stream)
 
-local lbibtex_default = require "lbt-default"
+local labtx_default = require "labtx-default"
 
 local stderr = io.stderr
 local stdout = io.stdout
@@ -44,11 +43,11 @@ function Core.new()
 	obj.templates = {}
 	obj.formatters = {}
 	obj.sorting = {}
-	obj.sorting.formatters = lbibtex_default.sorting.formatters
-	obj.sorting.lessthan = lbibtex_default.sorting.lessthan
-	obj.sorting.equal = lbibtex_default.sorting.equal
-	obj.sorting.targets = lbibtex_default.sorting.targets
-	obj.label = lbibtex_default.label -- obj.label.make, obj.label.add_suffix
+	obj.sorting.formatters = labtx_default.sorting.formatters
+	obj.sorting.lessthan = labtx_default.sorting.lessthan
+	obj.sorting.equal = labtx_default.sorting.equal
+	obj.sorting.targets = labtx_default.sorting.targets
+	obj.label = labtx_default.label -- obj.label.make, obj.label.add_suffix
 	obj.modify_citations = nil
 	return setmetatable(obj,{
 	__index = 
@@ -66,10 +65,11 @@ end
 
 local function get_language(self,c)
 	for key,val in pairs(self.languages) do
-		if val.is ~= nil and val.is(c) == true then return key end
-	end
-	for key,val in pairs(self.languages) do
-		if val.is == nil and c.fields["langid"] == key then return key end
+		if val.is ~= nil then
+			if val.is(c) == true then return key end
+		else
+			if c.fields["langid"] == key then return key end
+		end
 	end
 	return nil
 end
@@ -82,7 +82,7 @@ local function includeskey(table,key)
 end
 
 function Core.read_aux(file)
-	if lbtdebug.debugmode then lbtdebug.typecheck(file,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(file,"string") end
 	local aux = {}
 	aux.citekeys = {}
 	aux.database = {}
@@ -158,7 +158,7 @@ end
 
 
 function Core:load_aux(file)
-	if lbtdebug.debugmode then lbtdebug.typecheck(file,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(file,"string") end
 	local aux = Core.read_aux(file)
 	self.aux_contents = aux
 	self.cites = aux.citekeys
@@ -189,7 +189,7 @@ function Core:read_db()
 			return false,m .. " in Databse " .. self.bibs[i]
 		else
 			self:message("Database file #" .. tostring(i) .. ": " .. self.bibs[i])
-			for dummy,msg in ipairs(m) do
+			for _,msg in ipairs(m) do
 				self:warning(msg .. " in " .. self.bibs[i] .. ", ignored")
 			end
 		end
@@ -197,7 +197,7 @@ function Core:read_db()
 	if self.cites == nil then
 		-- \cite{*}
 		self.cites = {}
-		for dummy,v in pairs(self.database.db) do
+		for _,v in pairs(self.database.db) do
 			self.cites[#self.cites + 1] = v
 		end
 	else
@@ -373,7 +373,7 @@ local function trim(str)
 end
 
 function Core:outputcites(formatter)
-	if lbtdebug.debugmode then lbtdebug.typecheck(formatter,"table") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(formatter,"table") end
 	for i = 1, #self.cites do
 		local s = "\\bibitem"
 		local label = self.cites[i].label
@@ -397,7 +397,7 @@ end
 
 local function generate_sortfunction(targets,formatters,equal,lessthan)
 	return function(lhs,rhs)
-		for dummy,target in ipairs(targets) do
+		for _,target in ipairs(targets) do
 			local l = get_sorting_formatter(formatters,target)
 			if l == nil then l = lhs.fields[target]
 			else l = l(formatters,lhs) end
@@ -407,7 +407,7 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 			else r = r(formatters,rhs) end
 			if r ~= nil then
 				if equal(l,r) == false then
-					if lbtdebug.debugmode == true then
+					if labtxdebug.debugmode == true then
 						print("for comparing " .. lhs.key .. " and " .. rhs.key .. ", " .. target .. " is used, the values are:")
 						print(l)
 						print(r)
@@ -436,21 +436,21 @@ local function template_strs_to_functions(templ,formatters,field_formatters)
 end
 
 function Core:outputthebibliography()
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(self.blockseparator,"table")
-		lbtdebug.typecheck(self.templates,"table")
-		lbtdebug.typecheck(self.formatters,"table")
-		lbtdebug.typecheck(self.crossref,"table")
-		lbtdebug.typecheck(self.crossref.templates,"table")
-		lbtdebug.typecheck(self.label,"table")
-		lbtdebug.typecheck(self.label.make,"function",true)
-		lbtdebug.typecheck(self.label.add_suffix,"function",true)
-		lbtdebug.typecheck(self.sorting,"table",true)
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(self.blockseparator,"table")
+		labtxdebug.typecheck(self.templates,"table")
+		labtxdebug.typecheck(self.formatters,"table")
+		labtxdebug.typecheck(self.crossref,"table")
+		labtxdebug.typecheck(self.crossref.templates,"table")
+		labtxdebug.typecheck(self.label,"table")
+		labtxdebug.typecheck(self.label.make,"function",true)
+		labtxdebug.typecheck(self.label.add_suffix,"function",true)
+		labtxdebug.typecheck(self.sorting,"table",true)
 		if self.sorting ~= nil then
-			lbtdebug.typecheck(self.sorting.targets,"table",true)
-			lbtdebug.typecheck(self.sorting.formatters,"table",true)
+			labtxdebug.typecheck(self.sorting.targets,"table",true)
+			labtxdebug.typecheck(self.sorting.formatters,"table",true)
 		end
-		lbtdebug.typecheck(self.modify_citations,"function",true)
+		labtxdebug.typecheck(self.modify_citations,"function",true)
 	end
 	
 
@@ -477,7 +477,7 @@ function Core:outputthebibliography()
 	end
 	-- 整形関数用意
 	local default_entry_formatters = {} -- 整形関数のテーブルを入れる
-	local lang_entry_formatters = {} -- 言語ごとの整形関数のテーブルを入れる．lfs[entry type][language] = function
+	local lang_entry_formatters = {} -- 言語ごとの整形関数のテーブルを入れる．
 	for key,val in pairs(self.templates) do
 		local f,msg
 		if type(val) == "string" then
@@ -576,7 +576,7 @@ function Core:outputthebibliography()
 	if longest_label == nil then longest_label = tostring(#self.cites) end
 
 	-- check citations
-	for dummy,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
+	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)
 	end
 
@@ -594,19 +594,19 @@ function Core:outputthebibliography()
 end
 
 function Core:warning(s)
-	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
 	self.warning_count = self.warning_count + 1
-	stdout:write("LBibTeX warning: " .. s .. "\n")
-	if self.blg ~= nil then self.blg:write("LBibTeX warning: " .. s .. "\n") end
+	stdout:write("labtx warning: " .. s .. "\n")
+	if self.blg ~= nil then self.blg:write("labtx warning: " .. s .. "\n") end
 end
 
 function Core:error(s,exit_code)
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(s,"string")
-		lbtdebug.typecheck(exit_code,"number")
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(s,"string")
+		labtxdebug.typecheck(exit_code,"number")
 	end
-	stderr:write("LBibTeX error: " .. s .. "\n")
-	if self.blg ~= nil then self.blg:write("LBibTeX error: " .. s .. "\n") end
+	stderr:write("labtx error: " .. s .. "\n")
+	if self.blg ~= nil then self.blg:write("labtx error: " .. s .. "\n") end
 	if exit_code ~= nil then
 		self:dispose()
 		exit(exit_code)
@@ -614,12 +614,12 @@ function Core:error(s,exit_code)
 end
 
 function Core:log(s)
-	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 function Core:message(s)
-	if lbtdebug.debugmode then lbtdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
 	stdout:write(s .. "\n")
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end

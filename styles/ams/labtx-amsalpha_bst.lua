@@ -1,7 +1,7 @@
-ams_styles = require "lbt-style-ams"
+ams_styles = require "labtx-style-ams"
 
---local lbtdebug = require "lbt-debug"
---lbtdebug.debugmode = true
+--local labtxdebug = require "labtx-debug"
+--labtxdebug.debugmode = true
 
 BibTeX.preamble = BibTeX.preamble .. ams_styles.preamble
 BibTeX.macros = ams_styles.macros

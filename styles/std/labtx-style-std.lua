@@ -1,5 +1,5 @@
-local Functions = require "lbt-funcs"
-local CrossReference = require "lbt-crossref"
+local Functions = require "labtx-funcs"
+local CrossReference = require "labtx-crossref"
 
 local std_styles = {}
 

@@ -1,4 +1,4 @@
-local style = require "lbt-style-std"
+local style = require "labtx-style-std"
 
 style.ja = {}
 function style-std.ja:is_kanji(s)

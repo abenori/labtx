@@ -1,21 +1,21 @@
 --[[
-lbt-bibdata: データベース管理．
-function lbt-bibdata.new()
-戻り値: lbt-bibdataオブジェクト
+labtx-bibdata: データベース管理．
+function labtx-bibdata.new()
+戻り値: labtx-bibdataオブジェクト
 
 BibDatabase:read(file)
 file: 文字列
 データベースファイルfileからデータベースを読み込む．
 
 -- メンバ変数
--- db: データベース．lbt-databaseオブジェクト
+-- db: データベース．labtx-databaseオブジェクト
 -- preamble: 文字列．プレアンブル．
 -- macros: 文字列からなる配列．macros["macro"] = "string"と代入しておくと，データ内の"macro"が"string"で自動で置き換えられる．]]
 
-local Database = require "lbt-database"
+local Database = require "labtx-database"
 local BibDatabase = {}
 
-local lbtdebug = require "lbt-debug"
+local labtxdebug = require "labtx-debug"
 
 -- BibDatabase
 -- ヘルパ関数
@@ -280,9 +280,9 @@ end
 
 
 function BibDatabase:apply_macro_to_str(str,bib)
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(str,"string")
-		lbtdebug.typecheck(bib,"string",true)
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(str,"string")
+		labtxdebug.typecheck(bib,"string",true)
 	end
 	local macros = {self.macros}
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
@@ -316,8 +316,8 @@ function BibDatabase.new()
 end
 
 function BibDatabase:read(file)
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(file,"string")
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(file,"string")
 	end
 	-- load databse
 	local c,p,m = read_database(file);

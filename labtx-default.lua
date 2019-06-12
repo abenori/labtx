@@ -1,6 +1,6 @@
 -- デフォルト設定
-local Functions = require "lbt-funcs"
-local Template = require "lbt-template"
+local Functions = require "labtx-funcs"
+local Template = require "labtx-template"
 local default = {}
 
 local function purify(s) return s:gsub("\\[a-zA-Z]*",""):gsub("[ -/:-@%[-`{-~]","") end

@@ -2,12 +2,12 @@
 
 local start_time = os.clock()
 kpse.set_program_name("texlua","bibtex")
-local LBibTeX = require "lbt-core"
+local labtx = require "labtx-core"
 
-local option = (require "lbt-options").new()
+local option = (require "labtx-options").new()
 local mincrossrefs = 2
 local function show_help(options_msg)
-	local msg = "Usage: lbibtex [option] auxfile"
+	local msg = "Usage: labtx [option] auxfile[.aux]"
 	msg = msg .. "\n " .. options_msg:gsub("\n","\n ") .. "\n"
 	io.stdout:write(msg)
 end
@@ -18,7 +18,7 @@ option.options = {
 }
 
 local files,msg = option:parse(arg)
-if files == nil then io.stderr:write("LBibTeX error: " .. msg .. "\n") os.exit(1) end
+if files == nil then io.stderr:write("labtx error: " .. msg .. "\n") os.exit(1) end
 
 local first = true
 for _,f in ipairs(files) do
@@ -37,13 +37,13 @@ for _,f in ipairs(files) do
 		else return fullpath:sub(r) end
 	end
 
-	BibTeX = LBibTeX.new()
+	BibTeX = labtx.new()
 	BibTeX.crossref.mincrossrefs = mincrossrefs
 	local b
 	b,msg = BibTeX:load_aux(file)
 	if b == false then io.stdout:write(msg .. "\n") os.exit(1) end
 	BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
-	local style = kpse.find_file("lbt-" .. BibTeX.style .. "_bst.lua","lua")
+	local style = kpse.find_file("labtx-" .. BibTeX.style .. "_bst.lua","lua")
 	if style == nil then
 		BibTeX:error("style " .. BibTeX.style .. " is not found",3)
 	end

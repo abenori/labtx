@@ -1,6 +1,6 @@
 local Template = {}
 
-local Block = require "lbt-block"
+local Block = require "labtx-block"
 
 --[[
 書式をあたえるとスタイルを生成してくれるようにする．

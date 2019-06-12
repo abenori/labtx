@@ -1,5 +1,5 @@
 require "test"
-local Functions = require "lbt-funcs"
+local Functions = require "labtx-funcs"
 
 -- change_case
 local function change_case_check(str,t,expect)

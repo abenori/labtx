@@ -1,6 +1,6 @@
 local Functions = {}
 
-local lbtdebug = require "lbt-debug"
+local labtxdebug = require "labtx-debug"
 
 -- 三つの状態がある
 -- nestレベル=0: 1
@@ -54,9 +54,9 @@ end
 -- strから頭numバイトをとる．ただし，文字を途中で切るようなことはしない．
 -- text_prefix("aあい",2)は"aあ"となるようにする．
 function Functions.text_prefix(str,num)
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(str,"string")
-		lbtdebug.typecheck(num,"number")
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(str,"string")
+		labtxdebug.typecheck(num,"number")
 	end
 	local index = 1
 	local r = ""
@@ -78,7 +78,7 @@ end
 
 -- とりあず普通にバイト数で数えるやつ
 function Functions.text_length(str)
-	if lbtdebug.debugmode then lbtdebug.typecheck(str,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(str,"string") end
 	local r = 0
 	for s,n in split_str_asin_bibtex(str) do
 		if n == 2 then r = r + 1
@@ -92,9 +92,9 @@ end
 -- funcは見付かった最初と最後を返す（バイト数）
 -- 戻り値：aXbYcで[XY]を検索した場合{a,b,c},{X,Y}
 function Functions.string_split(str,func)
-	if lbtdebug.debugmode then
-		lbtdebug.typecheck(str,"string")
-		lbtdebug.typecheck(func,"function")
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(str,"string")
+		labtxdebug.typecheck(func,"function")
 	end
 	local array = {}
 	local separray = {}
@@ -150,10 +150,10 @@ end
 -- {}によるネストレベルが0のものを検索する．素の検索にはfuncを使う．
 -- {}は\によるエスケープも考慮する．
 function Functions.find_nonnested(str,func,init)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(str,"string")
-		lbtdebug.typecheck(func",function")
-		lbtdebug.typecheck(init,"number",true)
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(str,"string")
+		labtxdebug.typecheck(func",function")
+		labtxdebug.typecheck(init,"number",true)
 	end
 	local nest = 0
 	local r = init
@@ -181,9 +181,9 @@ function Functions.find_nonnested(str,func,init)
 end
 
 function Functions.split_names(names,seps)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(names,"string")
-		lbtdebug.typecheck(seps,"table",true)
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(names,"string")
+		labtxdebug.typecheck(seps,"table",true)
 	end
 	if seps == nil then seps = {" [aA][nN][dD] "} end
 	local f = function(str)
@@ -331,9 +331,9 @@ function Functions.get_name_parts(name)
 end
 
 function Functions.format_name_by_parts(nameparts,format)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(nameparts,"table")
-		lbtdebug.typecheck(format,"string")
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(nameparts,"table")
+		labtxdebug.typecheck(format,"string")
 	end
 	local nmpts = {}
 	for k,v in pairs(nameparts) do
@@ -423,9 +423,9 @@ function Functions.format_name_by_parts(nameparts,format)
 end
 
 function Functions.format_name(name,format)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(name,"string")
-		lbtdebug.typecheck(format,"string")
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(name,"string")
+		labtxdebug.typecheck(format,"string")
 	end
 	return Functions.format_name_by_parts(Functions.get_name_parts(name),format)
 end
@@ -438,9 +438,9 @@ end
 -- A: {\\TeX B} -> A: {\\TeX B}
 -- とりあえず実装．もっとシンプルになりそうだけど……
 function Functions.change_case(str,t)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(str,"string")
-		lbtdebug.typecheck(t,"string")
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(str,"string")
+		labtxdebug.typecheck(t,"string")
 	end
 	t = t:lower()
 	local func
@@ -504,11 +504,11 @@ function Functions.change_case(str,t)
 end
 
 function Functions.make_name_list(namearray, format, separray, etalstr)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(namearray,"table")
-		lbtdebug.typecheck(format,{"string","table"})
-		lbtdebug.typecheck(separray,{"table"})
-		lbtdebug.typecheck(etalstr,"string")
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(namearray,"table")
+		labtxdebug.typecheck(format,{"string","table"})
+		labtxdebug.typecheck(separray,{"table"})
+		labtxdebug.typecheck(etalstr,"string")
 	end
 	if #separray == 0 then separray = {", "} end
 	
@@ -541,7 +541,7 @@ end
 
 -- とりあえず適当な実装
 function Functions.remove_TeX_cs(s)
-	if lbtdebug.debugmod then lbtdebug.typecheck(s,"string") end
+	if labtxdebug.debugmod then labtxdebug.typecheck(s,"string") end
 	return s:gsub("\\[a-zA-Z]+",""):gsub("\\.",""):gsub("[{}]","")
 end
 
@@ -564,9 +564,9 @@ default_required["conference"] = default_required["incollection"]
 -- required[type] = {required = {...},optional = {...}}
 -- optional is ignored (at this point)
 function Functions.citation_check(citations,required)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(citations,"table")
-		lbtdebug.typecheck(required,"table")
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(citations,"table")
+		labtxdebug.typecheck(required,"table")
 	end
 	if required == nil then required = default_required end
 	local r = {}
@@ -651,9 +651,9 @@ local function merge_sort(list,from,to,comp)
 end
 
 function Functions.stable_sort(list,comp)
-	if lbtdebug.debugmod then
-		lbtdebug.typecheck(list,"table")
-		lbtdebug.typecheck(comp,"function",true)
+	if labtxdebug.debugmod then
+		labtxdebug.typecheck(list,"table")
+		labtxdebug.typecheck(comp,"function",true)
 	end
 	if comp == nil then comp = function(a,b) return a < b end end
 	return merge_sort(list,1,#list,comp)
