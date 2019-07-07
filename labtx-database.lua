@@ -78,8 +78,8 @@ end
 
 function Citation.new(db,data)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(db,"table")
-		labtxdebug.typecheck(data,"table")
+		labtxdebug.typecheck(db,"db","table")
+		labtxdebug.typecheck(data,"data","table")
 	end
 	local obj = {}
 	for k,v in pairs(data) do
@@ -122,7 +122,7 @@ end
 -- set_field(key,val)でkeyにvalを入れる
 -- set_field(key,cite,key1)でkeyにcite.fields[key1]を入れる
 function Citation:set_field(key,a,b)
-	if labtxdebug.debugmode then labtxdebug.typecheck(key,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(key,"key","string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	if b == nil then
@@ -134,14 +134,14 @@ function Citation:set_field(key,a,b)
 end
 
 function Citation:delete_field(key)
-	if labtxdebug.debugmode then labtxdebug.typecheck(key,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(key,"key","string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	meta.__extra_fields[key] = nil_data
 end
 
 function Citation:get_raw_field(key)
-	if labtxdebug.debugmode then labtxdebug.typecheck(key,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(key,"key","string") end
 	key = unicode.utf8.lower(key)
 	local meta = getmetatable(self.fields)
 	local val = meta.__extra_fields[key]
@@ -157,8 +157,8 @@ end
 
 function Database:add_db(c)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(c,"table")
-		labtxdebug.typecheck(c.key,"string")
+		labtxdebug.typecheck(c,"c","table")
+		labtxdebug.typecheck(c.key,"c.key","string")
 	end
 	if self.db[c.key] == nil then
 		self.db[c.key] = Citation.new(self,c)

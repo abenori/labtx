@@ -33,16 +33,17 @@ function labtxdebug.abort()
 	backup_os.exit(0)
 end
 
--- labtxdebug.typecheck(arg,typename,acceptnil)
+-- labtxdebug.typecheck(arg,typename,argname,acceptnil)
 -- arg: 変数
+-- argname: 変数名
 -- typename: 文字列または文字列からなる配列
 -- acceptnil: boolean （省略可能，省略時はfalse．）
 -- 戻り値：なし
 -- 変数argの型がtypenameに含まれるかチェックし，含まれない場合はエラーメッセージ出力後終了する．
 -- acceptnil = trueの場合はarg = nilでもエラーにはならない．
-function labtxdebug.typecheck(arg,typename,acceptnil)
+function labtxdebug.typecheck(arg,argname,typename,acceptnil)
 	if (acceptnil == nil or acceptnil == false) and arg == nil then
-		backup_io.stderr:write("argument error: should not nil\n")
+		backup_io.stderr:write("argument error: " .. argname .. " should not be nil\n")
 		labtxdebug.abort()
 	end
 	if type(typename) == "string" then typename = {typename} end
@@ -57,7 +58,7 @@ function labtxdebug.typecheck(arg,typename,acceptnil)
 			typenames = typenames .. tn
 		end
 		if found == false then
-			backup_io.stderr:write("argument error: should be " .. typename .. " but " .. type(arg) .. "\n")
+			backup_io.stderr:write("argument error: " .. argname .. " should be " .. typenames .. " but " .. type(arg) .. "\n")
 			labtxdebug.abort()
 		end
 	end

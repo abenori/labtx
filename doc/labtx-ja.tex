@@ -389,13 +389,22 @@ thebibliography環境における
 ただし，shorthandフィールドがある場合には，その値が使われます．
 ラベルの生成を押さえる（標準スタイルの「plain」に対応）には
 \begin{lstlisting}
-BibTeX.label.make = nil
+BibTeX.label.make = false
 \end{lstlisting}
 とします．
 
 より細かく設定する場合は，\luavar{BibTeX.label.templates}と\luavar{BibTeX.label.formatters}を設定します．
 設定の方法はテンプレート（項\ref{subsec:テンプレート設定}）と同様です．
 なお，同じラベル名が生成された場合，デフォルトでは末尾にa,b,c,...が追加されます．
+
+なお，
+\begin{lstlisting}
+function BibTeX.label:make(c)
+  ....
+  return ...
+end
+\end{lstlisting}
+と関数として定義すると，その戻り値そのものがラベルとして利用されます．
 
 \subsection{出力}
 最後に
@@ -503,7 +512,7 @@ string_split("aXbYc",function(s) return s:find("[XY]") end)
 \end{quote}
 \begin{itemize}
 \item \verb|<str1>|はそのまま出力される．
-\item \verb|<name1>|は\luastring{l}，\luastring{ll}，\luastring{f}，\luastring{ff}，\luastring{v}，\luastring{vv}，\luastring{j}，\luastring{jj}の何れか．Last name，First name，von part，jr partに対応し，二つ続いているものは名前全体を，そうでないものは短縮形を表す．
+\item \verb|<name1>|は\luastring{l}，\luastring{ll}，\luastring{f}，\luastring{ff}，\luastring{v}，\luastring{vv}，\luastring{j}，\luastring{jj}の何れか．Last name，First name，von part，jr partに対応し，二つ続いているものは名前全体を，そうでないものは短縮形を出力する．
 \item \verb|<before1>|はそのまま出力される．ただし\verb|<name1>|に対応する部分がない場合，出力されない．
 \item \verb|<after1>|は\verb|{<sep1>}<after1_>|か\verb|<after1_>|（中括弧なし）の何れかである．\verb|<sep1>|は\verb|<name1>|の各部分をつなぐ文字として使われ，\verb|<after1_>|は次の部分とのつなぐ文字として使われる．\verb|<sep1>|が省略された場合や，\luastring{~}であった場合は，空白（\luastring{ }か\luastring{~}）が状況に応じて使われる．もし常に\luastring{~}を出力したい場合は，\luastring{~~}を指定する．
 \item \verb|<str2>|等も同様．

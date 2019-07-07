@@ -1,4 +1,4 @@
-ams_styles = require "labtx-style-ams"
+local ams_styles = require "labtx-style-ams"
 
 --local labtxdebug = require "labtx-debug"
 ---labtxdebug.debugmode = true
@@ -44,6 +44,22 @@ BibTeX.crossref.templates["inbook"] = "[$<author|editor>:$<title>:$<edition>:$<c
 BibTeX.crossref.templates["incollection"] = "[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>:$<doi>]"
 BibTeX.crossref.templates["inproceedings"] = "[$<author>:$<title>:$<incollection_crossref> \\cite{$<crossref>}:$<note>:$<book_pages>:@S<>< (|$<language>|)>:$<doi>]"
 BibTeX.crossref.templates["conference"] = BibTeX.crossref.templates["inproceedings"]
+
+BibTeX.languages.ja = {}
+BibTeX.languages.ja.formatters = {}
+
+
+function BibTeX.languages.ja.is(c)
+	if c.fields["langid"] == "ja" then return true end
+	return false
+end
+
+function BibTeX.languages.ja.formatters:author(c)
+	local a = Functions.split_names(names)
+	local nameformat = "{ll~}{ff}"
+	if #a <= 2 then return Functions.make_name_list(a,nameformat,{", ",", "},", 他")
+	else return Functions.make_name_list(a,nameformat,{", ",", "},", 他") end
+end
 
 BibTeX.formatters = ams_styles.formatters
 function BibTeX.formatters:doi(c)

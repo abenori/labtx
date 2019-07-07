@@ -3,6 +3,7 @@
 local start_time = os.clock()
 kpse.set_program_name("texlua","bibtex")
 local labtx = require "labtx-core"
+local labtxdebug = require "labtx-debug"
 
 local option = (require "labtx-options").new()
 local mincrossrefs = 2
@@ -12,13 +13,31 @@ local function show_help(options_msg)
 	io.stdout:write(msg)
 end
 
+local doctypename = "latex"
+local defstyle = nil
+
 option.options = {
    {"min-crossrefs=","include item after <NUM> cross-refs; default 2",function(n) mincrossrefs = n end,"number"},
-   {"help","display this message and exit",function() show_help(option:helps()) os.exit(0) end}
+   {"help","display this message and exit",function() show_help(option:helps()) os.exit(0) end},
+   {"type",function(s) doctypename = s end,"string"},
+   {"style","specify the style",function(s) defstyle = s end,"string"},
+   {"debug",function() labtxdebug.debugmode = true end}
 }
 
 local files,msg = option:parse(arg)
 if files == nil then io.stderr:write("labtx error: " .. msg .. "\n") os.exit(1) end
+
+local doctype = require ("labtx-" .. doctypename .. "_typ")
+if doctype == nil then
+	io.stderr:write("can't find the document type " .. doctypename .. "\n")
+	os.exit(1)
+end
+
+local function get_filename(fullpath)
+	local r = fullpath:find("[^/]*$")
+	if r == nil then return fullpath
+	else return fullpath:sub(r) end
+end
 
 local first = true
 for _,f in ipairs(files) do
@@ -27,22 +46,16 @@ for _,f in ipairs(files) do
 	if f:sub(-4,-1):lower() ~= ".aux" then f = f .. ".aux" end
 	local file = kpse.find_file(f)
 	if file == nil then
-		io.stderr:write("can't open file `" .. f .. "'")
+		io.stderr:write("can't find file `" .. f .. "'\n")
 		goto continue
 	end
 
-	local function get_filename(fullpath)
-		local r = fullpath:find("[^/]*$")
-		if r == nil then return fullpath
-		else return fullpath:sub(r) end
-	end
-
-	BibTeX = labtx.new()
-	BibTeX.crossref.mincrossrefs = mincrossrefs
-	local b
-	b,msg = BibTeX:load_aux(file)
-	if b == false then io.stdout:write(msg .. "\n") os.exit(1) end
+	BibTeX = labtx.new(doctype)
+	local b,msg = BibTeX:load_aux(file)
+	if b == false then io.stderr:write(msg .. "\n") goto continue end
 	BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
+	BibTeX.crossref.mincrossrefs = mincrossrefs
+	if defstyle ~= nil then BibTeX.style = defstyle end
 	local style = kpse.find_file("labtx-" .. BibTeX.style .. "_bst.lua","lua")
 	if style == nil then
 		BibTeX:error("style " .. BibTeX.style .. " is not found",3)
@@ -66,6 +79,5 @@ for _,f in ipairs(files) do
 end
 if first == true then io.stderr:write("no input file\n") os.exit(1) end
 io.stdout:write("total time: " .. tostring(os.clock() - start_time) .. " sec\n")
-
 
 

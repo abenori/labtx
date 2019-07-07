@@ -1,4 +1,4 @@
-ams_styles = require "labtx-style-ams"
+local ams_styles = require "labtx-style-ams"
 
 --local labtxdebug = require "labtx-debug"
 --labtxdebug.debugmode = true

@@ -1,6 +1,10 @@
 local Functions = require "labtx-funcs"
 local CrossReference = require "labtx-crossref"
 
+local labtxdebug = require "labtx-debug"
+--labtxdebug.debugmode = true
+
+
 local std_styles = {}
 
 std_styles.macros = {}
@@ -217,7 +221,7 @@ function std_styles.formatters:journal_crossref(c)
 end
 
 function std_styles.formatters:book_crossref(c)
-	r = ""
+	local r = ""
 	if c.fields["volume"] == nil then r = "In "
 	else r = "Volume" .. tie_or_space(c.fields["volume"]) .. " of " end
 	if c.fields["editor"] ~= nil and c.fields["editor"] == c.fields["author"] then
@@ -247,5 +251,7 @@ function std_styles.formatters:incollection_crossref(c)
 	return nil
 end
 
+
 return std_styles
+
 

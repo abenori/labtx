@@ -10,7 +10,8 @@ file: 文字列
 -- メンバ変数
 -- db: データベース．labtx-databaseオブジェクト
 -- preamble: 文字列．プレアンブル．
--- macros: 文字列からなる配列．macros["macro"] = "string"と代入しておくと，データ内の"macro"が"string"で自動で置き換えられる．]]
+-- macros: 文字列からなる配列．macros["macro"] = "string"と代入しておくと，データ内の"macro"が"string"で自動で置き換えられる．
+]]
 
 local Database = require "labtx-database"
 local BibDatabase = {}
@@ -281,8 +282,8 @@ end
 
 function BibDatabase:apply_macro_to_str(str,bib)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(str,"string")
-		labtxdebug.typecheck(bib,"string",true)
+		labtxdebug.typecheck(str,"str","string")
+		labtxdebug.typecheck(bib,"bib","string",true)
 	end
 	local macros = {self.macros}
 	if bib ~= nil and self.macros_from_db[bib] ~= nil then
@@ -317,7 +318,7 @@ end
 
 function BibDatabase:read(file)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(file,"string")
+		labtxdebug.typecheck(file,"file","string")
 	end
 	-- load databse
 	local c,p,m = read_database(file);
@@ -325,7 +326,7 @@ function BibDatabase:read(file)
 	self.preamble = self.preamble .. p
 	self.macros_from_db[file] = m
 	local msg = {}
-	for dummy,v in pairs(c) do
+	for _,v in pairs(c) do
 		v.extra_data.bib = file
 		local b
 		b,m = self.base_db:add_db(v)

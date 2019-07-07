@@ -139,8 +139,8 @@ end
 
 function CrossReference:modify_citations(cites,db)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(cites,"table")
-		labtxdebug.typecheck(db,"table")
+		labtxdebug.typecheck(cites,"cites","table")
+		labtxdebug.typecheck(db,"db","table")
 	end
 --	local obj = {reference_key_name = "crossref",override = {},inherit = {}, except = {},all = {},mincrossrefs=1}
 	local all_type = CrossReference.all_type
@@ -238,9 +238,9 @@ end
 
 function CrossReference.make_formatter(orig_formatter,crossref_formatter,reference_key_name)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(orig_formatter,"function")
-		labtxdebug.typecheck(crossref_formatter,"function",true)
-		labtxdebug.typecheck(reference_key_name,"string",true)
+		labtxdebug.typecheck(orig_formatter,"orig_formatter","function")
+		labtxdebug.typecheck(crossref_formatter,"crossref_formatter","function",true)
+		labtxdebug.typecheck(reference_key_name,"reference_key_name","string",true)
 	end
 	if crossref_formatter == nil then return orig_formatter
 	else

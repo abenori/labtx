@@ -1,4 +1,4 @@
-std_styles = require "labtx-style-std"
+local std_styles = require "labtx-style-std"
 
 BibTeX.macros = std_styles.macros
 BibTeX.crossref = std_styles.crossref

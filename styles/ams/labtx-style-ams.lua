@@ -1,7 +1,7 @@
 local Functions = require "labtx-funcs"
 local CrossReference = require "labtx-crossref"
 
-ams_styles = {}
+local ams_styles = {}
 ams_styles.macros = {}
 
 ams_styles.macros["jan"] = "January"

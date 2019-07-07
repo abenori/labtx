@@ -25,17 +25,13 @@ local function find(array,key)
 	return nil
 end
 
-function Core.new()
+function Core.new(doctype)
 	local obj = {}
 	obj.database = BibDatabase.new()
+	-- obj.databaseに回すキー名
 	local inherit_table_keys = {"preamble","key","db","macros"}
-	obj.style = ""
-	obj.aux = ""
-	obj.cites = {}
-	obj.bibs = {}
-	obj.bbl = nil
-	obj.blg = nil
 	-- 以下アウトプット用設定
+	obj.doctype = doctype
 	obj.languages = {}
 	obj.crossref = CrossReference.new()
 	obj.crossref.templates = {}
@@ -47,9 +43,9 @@ function Core.new()
 	obj.sorting.lessthan = labtx_default.sorting.lessthan
 	obj.sorting.equal = labtx_default.sorting.equal
 	obj.sorting.targets = labtx_default.sorting.targets
-	obj.label = labtx_default.label -- obj.label.make, obj.label.add_suffix
 	obj.modify_citations = nil
-	return setmetatable(obj,{
+	obj.warning_count = 0
+	local rv = setmetatable(obj,{
 	__index = 
 		function(table,key)
 			if find(inherit_table_keys,key) ~= nil then return table.database[key]
@@ -61,7 +57,24 @@ function Core.new()
 			else Core[key] = value end
 		end
 	})
+	doctype.init(rv)
+	return rv
 end
+
+function Core:load_aux(file)
+	local aux,msg = self.doctype.load_aux(self,file)
+	if aux == nil then return false,msg end
+	self.bbl,msg = io.open(aux.out,"w")
+	if self.bbl == nil then return false,msg end
+	self.blg,msg = io.open(aux.log,"w")
+	if self.blg == nil then return false,msg end
+	self.style = aux.style
+	self.cites = aux.cites
+	self.bibs = aux.db
+	self.type_data = aux.type_data
+	return true
+end
+
 
 local function get_language(self,c)
 	for key,val in pairs(self.languages) do
@@ -74,109 +87,6 @@ local function get_language(self,c)
 	return nil
 end
 
-local function includeskey(table,key)
-	for i = 1, #table do
-		if key == table[i].key then return true end
-	end
-	return false
-end
-
-function Core.read_aux(file)
-	if labtxdebug.debugmode then labtxdebug.typecheck(file,"string") end
-	local aux = {}
-	aux.citekeys = {}
-	aux.database = {}
-	aux.args = {}
-	local fp,msg = io.open(file,"r","UTF-8")
-	if fp == nil then return nil,msg end
-	local grammar = lpeg.P{
-		"start";
-		start = lpeg.Ct(lpeg.V("cs") * lpeg.V("args")),
-		cs = "\\" * lpeg.C((1 - lpeg.S("{(["))^0),
-		args = lpeg.Ct(((lpeg.V("arg1") + lpeg.V("arg2") + lpeg.V("arg3")) / function(a,b,c) return {open = a,arg = b,close = c} end)^0),
-		arg1 = lpeg.C("{") * lpeg.C((1 - lpeg.S("{}" ) + lpeg.V("inbra"))^0) * lpeg.C("}"),
-		arg2 = lpeg.C("(") * lpeg.C((1 - lpeg.S("{})") + lpeg.V("inbra"))^0) * lpeg.C(")"),
-		arg3 = lpeg.C("[") * lpeg.C((1 - lpeg.S("{}]") + lpeg.V("inbra"))^0) * lpeg.C("]"),
-		inbra = "{" * (((1 - lpeg.S("{}")) + lpeg.V("inbra"))^0) * "}"
-	}
-
-	for line in fp:lines() do
-		local p = grammar:match(line)
-		if p ~= nil then
-			local cs = p[1]
-			if aux.args[cs] == nil then aux.args[cs] = {} end
-			table.insert(aux.args[cs],p[2])
-		end
-	end
-	fp:close()
-	
-	local citeall = false
-	if aux.args["citation"] ~= nil then
-		for i = 1,#aux.args["citation"] do
-			if aux.args["citation"][i][1] ~= nil then
-				if aux.args["citation"][i][1].arg == "*" then
-					citeall = true
-					break
-				else
-					if not includeskey(aux.citekeys,aux.args["citation"][i][1].arg) then
-						local c = {}
-						c.key = aux.args["citation"][i][1].arg
-						table.insert(aux.citekeys,c)
-					end
-				end
-			end
-		end
-	end
-	if citeall == true then aux.citekeys = nil end
-
-	if aux.args["bibstyle"] ~= nil then
-		if aux.args["bibstyle"][1] ~= nil then
-			if aux.args["bibstyle"][1][1] ~= nil then
-				aux.style = aux.args["bibstyle"][1][1].arg
-			end
-		end
-	end
-	if aux.args["bibdata"] ~= nil then
-		for i = 1,#aux.args["bibdata"] do
-			if aux.args["bibdata"][i][1] ~= nil then
-				local p = 0
-				while true do
-					local q = aux.args["bibdata"][i][1].arg:find(",",p)
-					if q == nil then
-						table.insert(aux.database,aux.args["bibdata"][i][1].arg:sub(p))
-						break
-					else
-						table.insert(aux.database,aux.args["bibdata"][i][1].arg:sub(p,q - 1))
-					end
-					p = q + 1;
-				end
-			end
-		end
-	end
-	return aux
-end
-
-
-function Core:load_aux(file)
-	if labtxdebug.debugmode then labtxdebug.typecheck(file,"string") end
-	local aux = Core.read_aux(file)
-	self.aux_contents = aux
-	self.cites = aux.citekeys
-	self.style = aux.style
-	self.bibs = aux.database
-	local r = file:find("%.[^./]*$")
-	local bbl,blg
-	if r == nil then
-		bbl = file .. ".bbl"
-		blg = file .. ".blg"
-	else
-		bbl = file:sub(1,r) .. "bbl"
-		blg = file:sub(1,r) .. "blg"
-	end
-	self.bbl = io.open(bbl,"w")
-	self.blg = io.open(blg,"w")
-	self.warning_count = 0
-end
 
 function Core:read_db()
 	for i = 1,#self.bibs do
@@ -227,106 +137,8 @@ function Core:dispose()
 	if self.blg ~= nil then self.blg:close() self.blg = nil end
 end
 
--- from bibtex.web
-local char_width = {}
-char_width[" "] = 278
-char_width["!"] = 278
-char_width["\""] = 500
-char_width["#"] = 833
-char_width["$"] = 500
-char_width["%"] = 833
-char_width["&"] = 778
-char_width["'"] = 278
-char_width["("] = 389
-char_width[")"] = 389
-char_width["*"] = 500
-char_width["+"] = 778
-char_width[","] = 278
-char_width["-"] = 333
-char_width["."] = 278
-char_width["/"] = 500
-char_width["0"] = 500
-char_width["1"] = 500
-char_width["2"] = 500
-char_width["3"] = 500
-char_width["4"] = 500
-char_width["5"] = 500
-char_width["6"] = 500
-char_width["7"] = 500
-char_width["8"] = 500
-char_width["9"] = 500
-char_width[":"] = 278
-char_width[";"] = 278
-char_width["<"] = 278
-char_width["="] = 778
-char_width[">"] = 472
-char_width["?"] = 472
-char_width["@"] = 778
-char_width["A"] = 750
-char_width["B"] = 708
-char_width["C"] = 722
-char_width["D"] = 764
-char_width["E"] = 681
-char_width["F"] = 653
-char_width["G"] = 785
-char_width["H"] = 750
-char_width["I"] = 361
-char_width["J"] = 514
-char_width["K"] = 778
-char_width["L"] = 625
-char_width["M"] = 917
-char_width["N"] = 750
-char_width["O"] = 778
-char_width["P"] = 681
-char_width["Q"] = 778
-char_width["R"] = 736
-char_width["S"] = 556
-char_width["T"] = 722
-char_width["U"] = 750
-char_width["V"] = 750
-char_width["W"] =1028
-char_width["X"] = 750
-char_width["Y"] = 750
-char_width["Z"] = 611
-char_width["["] = 278
-char_width["\\"] = 500
-char_width["]"] = 278
-char_width["^"] = 500
-char_width["_"] = 278
-char_width["`"] = 278
-char_width["a"] = 500
-char_width["b"] = 556
-char_width["c"] = 444
-char_width["d"] = 556
-char_width["e"] = 444
-char_width["f"] = 306
-char_width["g"] = 500
-char_width["h"] = 556
-char_width["i"] = 278
-char_width["j"] = 306
-char_width["k"] = 528
-char_width["l"] = 278
-char_width["m"] = 833
-char_width["n"] = 556
-char_width["o"] = 500
-char_width["p"] = 556
-char_width["q"] = 528
-char_width["r"] = 392
-char_width["s"] = 394
-char_width["t"] = 389
-char_width["u"] = 556
-char_width["v"] = 528
-char_width["w"] = 722
-char_width["x"] = 528
-char_width["y"] = 528
-char_width["z"] = 444
-char_width["{"] = 500
-char_width["|"] =1000
-char_width["}"] = 500
-char_width["~"] = 500
-
 -- {}内を全て無視する．
-local function get_width(s)
+local function get_width(self,s)
 	local width = 0
 	local nest = 0
 	for c in string.utfcharacters(s) do
@@ -334,7 +146,7 @@ local function get_width(s)
 		elseif c == "}" then nest = nest - 1
 		end
 		if nest == 0 then
-			local w = char_width[c]
+			local w = self.char_width[c]
 			if w == nil then width = width + 500
 			else width = width + w end
 		end
@@ -342,22 +154,6 @@ local function get_width(s)
 	return width
 end
 
-local function get_longest_label(self)
-	local max_width = 0
-	local max_width_label = nil
-	for i = 1, #self.cites do
-		local label
-		if self.cites[i].label ~= nil then
-			label = self.cites[i].label
-			local width = get_width(label)
-			if width > max_width then
-				max_width = width
-				max_width_label = label
-			end
-		end
-	end
-	return max_width_label
-end
 
 function Core:output(s)
 	self.bbl:write(s)
@@ -370,25 +166,6 @@ end
 local function trim(str)
 --	return str:gsub("^[ \n\t]*(.-)[ \n\t]*$","%1")
 	return str:gsub("^[ \n\t]*",""):gsub("[ \n\t]*$","")
-end
-
-function Core:outputcites(formatter)
-	if labtxdebug.debugmode then labtxdebug.typecheck(formatter,"table") end
-	for i = 1, #self.cites do
-		local s = "\\bibitem"
-		local label = self.cites[i].label
-		if label ~= nil then
-			s = s .. "[" .. label .. "]"
-		end
-		local key = self.cites[i].key
-		s = s .. "{" .. key .. "}"
-		self:outputline(s)
-		local s,msg = formatter(self.cites[i])
-		if s == nil then self:error(msg,1) return end
-		s = tostring(s)
-		self:outputline(trim(s:gsub("  +"," ")))
-		self:outputline("")
-	end
 end
 
 local function get_sorting_formatter(formatters,target)
@@ -423,37 +200,14 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 	end
 end
 
-local function template_strs_to_functions(templ,formatters,field_formatters)
-	local fs = {}
-	for key,val in pairs(formatters) do
-		if type(val) == "string" then
-			local f,msg = templ:make_from_str(val,field_formatters)
-			if f == nil then return nil,msg end
-			fs[key] = f
-		else fs[key] = val end
-	end
-	return fs
-end
-
-function Core:outputthebibliography()
+function Core:get_item_formatter()
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(self.blockseparator,"table")
-		labtxdebug.typecheck(self.templates,"table")
-		labtxdebug.typecheck(self.formatters,"table")
-		labtxdebug.typecheck(self.crossref,"table")
-		labtxdebug.typecheck(self.crossref.templates,"table")
-		labtxdebug.typecheck(self.label,"table")
-		labtxdebug.typecheck(self.label.make,"function",true)
-		labtxdebug.typecheck(self.label.add_suffix,"function",true)
-		labtxdebug.typecheck(self.sorting,"table",true)
-		if self.sorting ~= nil then
-			labtxdebug.typecheck(self.sorting.targets,"table",true)
-			labtxdebug.typecheck(self.sorting.formatters,"table",true)
-		end
-		labtxdebug.typecheck(self.modify_citations,"function",true)
+		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
+		labtxdebug.typecheck(self.templates,"BibTeX.templates","table")
+		labtxdebug.typecheck(self.formatters,"BibTeX.formatters","table")
+		labtxdebug.typecheck(self.crossref,"BibTeX.crossref","table")
+		labtxdebug.typecheck(self.crossref.templates,"BibTeX.crossref.templates","table")
 	end
-	
-
 	-- formatter生成
 	local template = Template.new(self.blockseparator)
 	-- 各フィールドを整形する関数を用意．
@@ -464,7 +218,7 @@ function Core:outputthebibliography()
 			lang_field_formatters[langname] = template:modify_formatters(lang.formatters)
 		end
 	end
-	field_formatters = {}
+	local field_formatters = {}
 	for key,val in pairs(default_field_formatters) do
 		field_formatters[key] = function(obj,c)
 			local l = get_language(self,c)
@@ -486,7 +240,7 @@ function Core:outputthebibliography()
 			default_entry_formatters[key] = f
 		else default_entry_formatters[key] = val end
 		for langname,lang in pairs(self.languages) do
-			if lang.templates[key] ~= nil then
+			if lang.templates ~= nil and lang.templates[key] ~= nil then
 				lang_entry_formatters[key] = {}
 				if type(lang.templates[key]) == "string" then
 					f,msg = template:make(lang.templates[key],field_formatters)
@@ -515,8 +269,8 @@ function Core:outputthebibliography()
 	end
 
 	-- CrossReferenceにも同じことをする．
-	default_crossref_entry_formatters = {}
-	lang_crossref_entry_formatters = {}
+	local default_crossref_entry_formatters = {}
+	local lang_crossref_entry_formatters = {}
 	for key,val in pairs(self.crossref.templates) do
 		if type(val) == "string" then
 			local f,msg = template:make(val,field_formatters)
@@ -550,51 +304,67 @@ function Core:outputthebibliography()
 			return f(c)
 		else return f(c) end
 	end
-	local output_cite_function = CrossReference.make_formatter(entry_formatter,crossref_entry_formatter)
-	-- Cross Reference
+	return CrossReference.make_formatter(entry_formatter,crossref_entry_formatter)
+end
+
+function Core:apply_cross_reference_modifications()
 	self.cites = self.crossref:modify_citations(self.cites,self.database)
-	-- label生成
-	if self.label.make ~= nil then
-		for _,c in ipairs(self.cites) do
-			c.label = self.label:make(c)
+end
+
+function Core:sort_cites()
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
+		if self.sorting ~= nil then
+			labtxdebug.typecheck(self.sorting.targets,"BibTeX.sorting.targets","table",true)
+			labtxdebug.typecheck(self.sorting.formatters,"BibTeX.sorting.formatters","table",true)
 		end
 	end
-	-- sort
 	if self.sorting ~= nil and self.sorting.targets ~= nil and #self.sorting.targets > 0 then
+		local template = Template.new(self.blockseparator)
 		local sort_formatter
 		sort_formatter,msg = template:modify_formatters(self.sorting.formatters)
 		if sort_formatter == nil then self:error(msg,1) return end
 		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
 		self.cites = Functions.stable_sort(self.cites, sortfunc)
 	end
-	-- label suffix
-	if self.label.make ~= nil and self.label.add_suffix ~= nil then
-		self.cites = self.label:add_suffix(self.cites)
-	end
-	
-	local longest_label = get_longest_label(self)
-	if longest_label == nil then longest_label = tostring(#self.cites) end
+end
 
+
+function Core:outputthebibliography()
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
+		labtxdebug.typecheck(self.label.add_suffix,"BibTeX.label.add_suffix","function",true)
+		labtxdebug.typecheck(self.sorting,"BibTeX.sorting","table",true)
+		if self.sorting ~= nil then
+			labtxdebug.typecheck(self.sorting.targets,"BibTeX.sorting.targets","table",true)
+			labtxdebug.typecheck(self.sorting.formatters,"BibTeX.sorting.formatters","table",true)
+		end
+		labtxdebug.typecheck(self.modify_citations,"BibTeX.modify_citations","function",true)
+	end
+	local output_cite_function = self:get_item_formatter()
+	-- Cross Reference
+	self:apply_cross_reference_modifications()
+	-- sort
+	self:sort_cites()
 	-- check citations
 	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)
+	end
+	-- set language
+	for i = 1,#self.cites do
+		self.cites[i].language = get_language(self,self.cites[i])
 	end
 
 	-- last modification
 	if self.modify_citations ~= nil then
 		self.cites = self:modify_citations(self.cites)
 	end
-
 	-- output
-	self:outputline(self.preamble)
-	self:outputline("")
-	self:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
-	self:outputcites(output_cite_function)
-	self:outputline("\\end{thebibliography}")
+	self.doctype.output(self,output_cite_function)
 end
 
 function Core:warning(s)
-	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"s","string") end
 	self.warning_count = self.warning_count + 1
 	stdout:write("labtx warning: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("labtx warning: " .. s .. "\n") end
@@ -602,8 +372,8 @@ end
 
 function Core:error(s,exit_code)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(s,"string")
-		labtxdebug.typecheck(exit_code,"number")
+		labtxdebug.typecheck(s,"s","string")
+		labtxdebug.typecheck(exit_code,"exit_code","number")
 	end
 	stderr:write("labtx error: " .. s .. "\n")
 	if self.blg ~= nil then self.blg:write("labtx error: " .. s .. "\n") end
@@ -614,12 +384,12 @@ function Core:error(s,exit_code)
 end
 
 function Core:log(s)
-	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"s","string") end
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end
 
 function Core:message(s)
-	if labtxdebug.debugmode then labtxdebug.typecheck(s,"string") end
+	if labtxdebug.debugmode then labtxdebug.typecheck(s,"s","string") end
 	stdout:write(s .. "\n")
 	if self.blg ~= nil then self.blg:write(s .. "\n") end
 end

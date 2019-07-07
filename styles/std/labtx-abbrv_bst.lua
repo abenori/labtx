@@ -1,4 +1,4 @@
-std_styles = require "labtx-style-std"
+local std_styles = require "labtx-style-std"
 
 BibTeX.macros["jan"] = "Jan."
 BibTeX.macros["feb"] = "Feb."
