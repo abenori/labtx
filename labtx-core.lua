@@ -68,6 +68,7 @@ function Core:load_aux(file)
 	if self.bbl == nil then return false,msg end
 	self.blg,msg = io.open(aux.log,"w")
 	if self.blg == nil then return false,msg end
+	self.aux_file = aux.file
 	self.style = aux.style
 	self.cites = aux.cites
 	self.bibs = aux.db
@@ -307,11 +308,11 @@ function Core:get_item_formatter()
 	return CrossReference.make_formatter(entry_formatter,crossref_entry_formatter)
 end
 
-function Core:apply_cross_reference_modifications()
+local function apply_cross_reference_modifications(self)
 	self.cites = self.crossref:modify_citations(self.cites,self.database)
 end
 
-function Core:sort_cites()
+local function sort_cites(self)
 	if labtxdebug.debugmode then
 		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
 		if self.sorting ~= nil then
@@ -343,9 +344,9 @@ function Core:outputthebibliography()
 	end
 	local output_cite_function = self:get_item_formatter()
 	-- Cross Reference
-	self:apply_cross_reference_modifications()
+	apply_cross_reference_modifications(self)
 	-- sort
-	self:sort_cites()
+	sort_cites(self)
 	-- check citations
 	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)

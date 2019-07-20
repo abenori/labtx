@@ -6,7 +6,7 @@ BibTeX.blockseparator = std_styles.blockseparator
 BibTeX.templates = std_styles.templates
 BibTeX.formatters = std_styles.formatters
 BibTeX.label.make = false
-BibTeX.sorting.targets = {"label","year","name","title"}
+BibTeX.sorting.targets = {"name","year","title"}
 
 BibTeX:outputthebibliography()
 

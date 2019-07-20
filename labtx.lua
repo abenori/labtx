@@ -19,8 +19,8 @@ local defstyle = nil
 option.options = {
    {"min-crossrefs=","include item after <NUM> cross-refs; default 2",function(n) mincrossrefs = n end,"number"},
    {"help","display this message and exit",function() show_help(option:helps()) os.exit(0) end},
-   {"type",function(s) doctypename = s end,"string"},
-   {"style","specify the style",function(s) defstyle = s end,"string"},
+   {"type=",function(s) doctypename = s end,"string"},
+   {"style=","specify the style",function(s) defstyle = s end,"string"},
    {"debug",function() labtxdebug.debugmode = true end}
 }
 
@@ -43,22 +43,18 @@ local first = true
 for _,f in ipairs(files) do
 	if f:sub(1,1) == "-" then goto continue end
 	if first == true then first = false else io.stdout:write("\n") end
-	if f:sub(-4,-1):lower() ~= ".aux" then f = f .. ".aux" end
-	local file = kpse.find_file(f)
-	if file == nil then
-		io.stderr:write("can't find file `" .. f .. "'\n")
-		goto continue
-	end
 
 	BibTeX = labtx.new(doctype)
-	local b,msg = BibTeX:load_aux(file)
+	local b,msg = BibTeX:load_aux(f)
 	if b == false then io.stderr:write(msg .. "\n") goto continue end
-	BibTeX:message("The top-level auxiliary file: " .. get_filename(file))
+	BibTeX:message("The top-level auxiliary file: " .. get_filename(BibTeX.aux_file))
 	BibTeX.crossref.mincrossrefs = mincrossrefs
 	if defstyle ~= nil then BibTeX.style = defstyle end
+	if BibTeX.style == nil then BibTeX:error("style is not specified") goto continue end
 	local style = kpse.find_file("labtx-" .. BibTeX.style .. "_bst.lua","lua")
 	if style == nil then
 		BibTeX:error("style " .. BibTeX.style .. " is not found",3)
+		goto continue 
 	end
 	BibTeX:message("The style file: " .. get_filename(style))
 	local b,m = BibTeX:read_db()
@@ -67,8 +63,8 @@ for _,f in ipairs(files) do
 	--local style_file_exec = loadfile(style,"t")
 	local backup = {io = io,os = os}
 	local function style_file_exec()
-		io = nil
-		os = nil
+--		io = nil
+--		os = nil
 		dofile(style)
 		io = backup.io
 		os = backup.os
