@@ -6,6 +6,7 @@ local BibDatabase = require "labtx-bibdb"
 local CrossReference = require "labtx-crossref"
 local Template = require "labtx-template"
 local Functions = require "labtx-funcs"
+local Label = require "labtx-label"
 
 local lpeg = require "lpeg"
 
@@ -38,8 +39,16 @@ function Core.new(doctype)
 	obj.blockseparator = {}
 	obj.templates = {}
 	obj.formatters = {}
+	obj.label = Label.new()
 	obj.sorting = {}
 	obj.sorting.formatters = labtx_default.sorting.formatters
+	function obj.sorting.formatters:label(c)
+		local y = c.fields["year"]
+		c.fields["year"] = nil
+		local rv = Label.make_label(obj,c)
+		c.fields["year"] = y
+		return rv
+	end
 	obj.sorting.lessthan = labtx_default.sorting.lessthan
 	obj.sorting.equal = labtx_default.sorting.equal
 	obj.sorting.targets = labtx_default.sorting.targets
@@ -136,23 +145,6 @@ function Core:dispose()
 	end
 	if self.bbl ~= nil then self.bbl:close() self.bbl = nil end
 	if self.blg ~= nil then self.blg:close() self.blg = nil end
-end
-
--- {}内を全て無視する．
-local function get_width(self,s)
-	local width = 0
-	local nest = 0
-	for c in string.utfcharacters(s) do
-		if c == "{" then nest = nest + 1
-		elseif c == "}" then nest = nest - 1
-		end
-		if nest == 0 then
-			local w = self.char_width[c]
-			if w == nil then width = width + 500
-			else width = width + w end
-		end
-	end
-	return width
 end
 
 
@@ -334,7 +326,6 @@ end
 function Core:outputthebibliography()
 	if labtxdebug.debugmode then
 		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
-		labtxdebug.typecheck(self.label.add_suffix,"BibTeX.label.add_suffix","function",true)
 		labtxdebug.typecheck(self.sorting,"BibTeX.sorting","table",true)
 		if self.sorting ~= nil then
 			labtxdebug.typecheck(self.sorting.targets,"BibTeX.sorting.targets","table",true)
@@ -347,6 +338,8 @@ function Core:outputthebibliography()
 	apply_cross_reference_modifications(self)
 	-- sort
 	sort_cites(self)
+	-- make label
+	Label.make_all_labels(self)
 	-- check citations
 	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)

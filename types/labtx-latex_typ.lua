@@ -32,8 +32,6 @@ local lpeg = require "lpeg"
 local Template = require "labtx-template"
 local Functions = require "labtx-funcs"
 
-local latex_label = (require "labtx-label").new()
-local make_label = latex_label.make_label
 -- from bibtex.web
 local char_width = {}
 char_width[" "] = 278
@@ -214,8 +212,8 @@ local function read_aux(file)
 	return aux
 end
 
+
 function latex_type.init(bibtex)
-	bibtex.label = latex_label
 end
 
 function latex_type.load_aux(bibtex,f)
@@ -288,7 +286,6 @@ function latex_type.output(bibtex,outputfunc)
 	if labtxdebug.debugmode then
 		labtxdebug.typecheck(outputfunc,"outputfunc","function")
 	end
-	make_label(bibtex)
 	local longest_label = get_longest_label(bibtex.cites,bibtex.type_data.char_width)
 	if longest_label == nil then longest_label = tostring(#bibtex.cites) end
 	bibtex:outputline(bibtex.preamble)

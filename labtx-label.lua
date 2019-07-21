@@ -1,3 +1,25 @@
+--[[
+ラベル生成用
+label = require "labtx-label"
+
+label.new(): オブジェクト生成
+  デフォルトの
+  obj.templates
+  obj.formatters
+  obj:suffix
+  obj:add_suffix
+  などが生成される．
+  
+label.make_label(bibtex,c)
+  bibtex: labtx-coreオブジェクト
+  c: Citation
+  ラベルを作って戻り値として返す
+
+label.make_all_labels(bibtex)
+  bibtex.citesのラベルを全て設定する．
+
+]]
+
 local Template = require "labtx-template"
 local Functions = require "labtx-funcs"
 local labtxdebug = require "labtx-debug"
@@ -5,84 +27,100 @@ local labtxdebug = require "labtx-debug"
 
 local latex_label = {}
 
-local function make_label(bibtex)
+local function get_label_formatter(bibtex)
+	local template = Template.new(bibtex.blockseparator)
+	local label_formatter
+	if type(bibtex.label.make) == "function" then
+		label_formatter = function(c)
+			local l = c.language
+			if l == nil or bibtex.languages[l] == nil or bibtex.languages[l].label == nil or bibtex.languages[l].label.make == nil then
+				return bibtex.label:make(c)
+			else
+				if type(bibtex.languages[l].label.make) ~= "function" then bibtex:error("languages.label.make should be a function when label.make is a function") return nil end
+				return bibtex.languages[l].label:make(c)
+			end
+		end
+	else
+		local default_label_field_formatters = template:modify_formatters(bibtex.label.formatters)
+		local lang_label_field_formatters = {}
+		for langname,lang in pairs(bibtex.languages) do
+			if lang.label ~= nil and lang.label.formatters ~= nil then
+				lang_label_field_formatters[langname] = template:modify_formatters(lang.label.formatters)
+			end
+		end
+		local label_field_formatters = {}
+		for key,val in pairs(default_label_field_formatters) do
+			label_field_formatters[key] = function(obj,c)
+				local l = c.language
+				if l == nil or lang_label_field_formatters[l] == nil or lang_label_field_formatters[l][key] == nil then
+					return default_label_field_formatters[key](default_label_field_formatters,c)
+				else
+					return lang_label_field_formatters[l][key](lang_label_field_formatters[l],c)
+				end
+			end
+		end
+		
+		local default_label_formatters = {}
+		local lang_label_formatters = {}
+		for key,val in pairs(bibtex.label.templates) do
+			local f,msg
+			if type(val) == "string" then
+				f,msg = template:make(val,label_field_formatters)
+				if f == nil then bibtex:error(msg .. " in label.templates") return end
+				default_label_formatters[key] = f
+			else
+				default_label_formatters[key] = val
+			end
+			for langname,lang in pairs(bibtex.languages) do
+				if lang.label ~= nil and lang.label.templates ~= nil and lang.label.templates[key] ~= nil then
+					lang_label_formatters[key] = {}
+					if type(lang.label.templates[key]) == "string" then
+						f,msg = template:make(lang.label.template[key],lang_field_formatters)
+						if f == nil then bibtex:error(msg .. " in label.templates") return end
+						lang_label_formatters[key][langname] = f
+					end
+				end
+			end
+			local label_formatter_sub = function(ctype,lang)
+				if lang_label_formatters[ctype] == nil or lang == nil or lang_label_formatters[cype][lang] == nil then
+					return default_label_formatters[ctype]
+				else
+					return lang_label_formatters[ctype][lang]
+				end
+			end
+			label_formatter = function(c)
+				local l = c.language
+				local f = label_formatter_sub(c.type,l)
+				if f == nil then
+					f = label_formatter_sub("",l)
+					if f == nil then bibtex:error("Cannot generate label for the type " .. c.type,1) return nil end
+				end
+				return f(c)
+			end
+		end
+	end
+	return label_formatter
+end
+
+-- いちいちラベル用関数を作るので効率が悪い
+function latex_label.make_label(bibtex,c)
 	if labtxdebug.debugmode then
 		labtxdebug.typecheck(bibtex.label,"BibTeX.label","table")
 		labtxdebug.typecheck(bibtex.label.make,"BibTeX.label.make",{"function","boolean"},true)
 	end
-	local template = Template.new(bibtex.blockseparator)
 	if bibtex.label.make ~= nil and bibtex.label.make ~= false then
-		local label_formatter
-		if type(bibtex.label.make) == "function" then
-			label_formatter = function(c)
-				local l = c.language
-				if l == nil or bibtex.languages[l] == nil or bibtex.languages[l].label == nil or bibtex.languages[l].label.make == nil then
-					return bibtex.label:make(c)
-				else
-					if type(bibtex.languages[l].label.make) ~= "function" then bibtex:error("languages.label.make should be a function when label.make is a function") return nil end
-					return bibtex.languages[l].label:make(c)
-				end
-			end
-		else
-			local default_label_field_formatters = template:modify_formatters(bibtex.label.formatters)
-			local lang_label_field_formatters = {}
-			for langname,lang in pairs(bibtex.languages) do
-				if lang.label ~= nil and lang.label.formatters ~= nil then
-					lang_label_field_formatters[langname] = template:modify_formatters(lang.label.formatters)
-				end
-			end
-			local label_field_formatters = {}
-			for key,val in pairs(default_label_field_formatters) do
-				label_field_formatters[key] = function(obj,c)
-					local l = c.language
-					if l == nil or lang_label_field_formatters[l] == nil or lang_label_field_formatters[l][key] == nil then
-						return default_label_field_formatters[key](default_label_field_formatters,c)
-					else
-						return lang_label_field_formatters[l][key](lang_label_field_formatters[l],c)
-					end
-				end
-			end
-			
-			local default_label_formatters = {}
-			local lang_label_formatters = {}
-			for key,val in pairs(bibtex.label.templates) do
-				local f,msg
-				if type(val) == "string" then
-					f,msg = template:make(val,label_field_formatters)
-					if f == nil then bibtex:error(msg .. " in label.templates") return end
-					default_label_formatters[key] = f
-				else
-					default_label_formatters[key] = val
-				end
-				for langname,lang in pairs(bibtex.languages) do
-					if lang.label ~= nil and lang.label.templates ~= nil and lang.label.templates[key] ~= nil then
-						lang_label_formatters[key] = {}
-						if type(lang.label.templates[key]) == "string" then
-							f,msg = template:make(lang.label.template[key],lang_field_formatters)
-							if f == nil then bibtex:error(msg .. " in label.templates") return end
-							lang_label_formatters[key][langname] = f
-						end
-					end
-				end
-				local label_formatter_sub = function(ctype,lang)
-					if lang_label_formatters[ctype] == nil or lang == nil or lang_label_formatters[cype][lang] == nil then
-						return default_label_formatters[ctype]
-					else
-						return lang_label_formatters[ctype][lang]
-					end
-				end
-				label_formatter = function(c)
-					local l = c.language
-					local f = label_formatter_sub(c.type,l)
-					if f == nil then
-						f = label_formatter_sub("",l)
-						if f == nil then bibtex:error("Cannot generate label for the type " .. c.type,1) return nil end
-					end
-					return f(c)
-				end
-			end
-		end
-	
+		local label_formatter = get_label_formatter(bibtex)
+		return label_formatter(c)
+	else return nil end
+end
+
+function latex_label.make_all_labels(bibtex)
+	if labtxdebug.debugmode then
+		labtxdebug.typecheck(bibtex.label,"BibTeX.label","table")
+		labtxdebug.typecheck(bibtex.label.make,"BibTeX.label.make",{"function","boolean"},true)
+	end
+	if bibtex.label.make ~= nil and bibtex.label.make ~= false then
+		local label_formatter = get_label_formatter(bibtex)
 		for i = 1,#bibtex.cites do
 			bibtex.cites[i].label = label_formatter(bibtex.cites[i])
 			if bibtex.cites[i].label == nil then
@@ -163,7 +201,6 @@ function latex_label.new()
 	obj.suffix = obj.suffix_alphabet
 
 	obj.make = true
-	obj.make_label = make_label
 
 	function obj:add_suffix(cites)
 		if self.suffix == nil then return cites end
