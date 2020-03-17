@@ -292,8 +292,6 @@ function latex_type.output(bibtex,outputfunc)
 	if bibtex.type_data.preamble ~= nil then bibtex:outputline(bibtex.type_data.preamble) end
 	bibtex:outputline("\\begin{thebibliography}{" .. longest_label .. "}")
 	for i = 1,#bibtex.cites do
-		local item = outputfunc(bibtex.cites[i])
-		if item == nil then bibtex:error("can't make an item for " .. bibtex.cites[i].key) end
 		local s = "\\bibitem"
 		if bibtex.cites[i].label ~= nil then s = s .. "[" .. bibtex.cites[i].label .. "]" end
 		s = s .. "{" .. bibtex.cites[i].key .. "}"

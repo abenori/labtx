@@ -1,4 +1,4 @@
-\documentclass[a4paper]{ltjsarticle}
+\documentclass[a4paper,lualatex]{jlreq}
 \usepackage[hiragino-pron]{luatexja-preset}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -7,6 +7,7 @@
 \usepackage[rgb,x11names]{xcolor}
 \usepackage{xparse}
 \usepackage{enumitem}
+\usepackage{jslogo}
 \lstdefinestyle{Lua}{%
   language=[5.2]Lua,
   basicstyle=\ttfamily,
@@ -20,10 +21,16 @@
 }
 \lstset{style=Lua,tabsize=2,showspaces=false}
 \DeclareRobustCommand{\labtx}{labtx}
+
+
 \newcommand{\luafunc}[1]{\texttt{#1}}
 %\NewDocumentCommand{\luafunc}{v}{\texttt{#1}}
 \newcommand*{\luatable}[1]{\texttt{#1}}
-\NewDocumentCommand{\luastring}{v}{``\texttt{#1}''}
+\makeatletter
+\def\luastring{\@ifstar{\luastring@s}{\luastring@}}
+\NewDocumentCommand{\luastring@}{v}{``\texttt{#1}''}
+\newcommand*{\luastring@s}[1]{``\texttt{#1}''}
+\makeatother
 %\NewDocumentCommand{\luavar}{v}{\texttt{#1}}
 \newcommand*{\luavar}[1]{\texttt{#1}}
 \NewDocumentCommand{\texcs}{v}{\texttt{#1}}
@@ -413,6 +420,55 @@ BibTeX:outputthebibliography()
 \end{lstlisting}
 とすることで，\url{.bbl}ファイルが出力されます．
 
+\section{言語機能}
+言語ごとに出力を切り替えるための簡単な機構が用意されています．
+これは次の二つからなります．
+\begin{itemize}
+\item 各エントリーに対して，言語を決定する．
+\item 言語ごとの設定を選択する．
+\end{itemize}
+\luavar{BibTeX.languages["言語"]}を通じて設定します．
+例えば言語``ja''（日本語を想定）に対しては，\luavar{BibTeX.languages.ja}に以下の項目を設定します\footnote{\luavar{BibTeX.languages["ja"]}と\luavar{BibTeX.languages.ja}は同じものでした．}．
+
+\subsection{言語決定}
+\luavar{BibTeX.languages["言語"].is}にエントリーの言語が``言語''であるかを指定します．
+例えば次のように設定します．
+\begin{lstlisting}
+function BibTeX.languages.ja.is(c)
+	if c.fields["language"] == "ja" then return true else return false end
+end
+\end{lstlisting}
+このようにすると，\luastring{language}フィールドが\luastring{ja}である時にこのエントリーの言語は日本語であると判定されます．
+
+\subsection{言語ごとの設定}
+\luavar{BibTeX.languages["言語"]}以下に設定します．
+設定項目はこれまでの設定と同様で，例えば
+\begin{lstlisting}
+BibTeX.languages.ja.templates = {}
+BibTeX.languages.ja.templates["article"]
+  = "[<著者：|$<author>>:<\\emph{|$<title>|}>:$<journal>:<|$<year>|年>]"
+function BibTeX.languages.ja.formatters:author(c)
+	if c.fields["author"] == nil then return nil end
+	local a = Functions.split_names(c.fields["author"])
+	if #a <= 2 then
+		return Functions.make_name_list(a,"{vv~}{ff~}",{", ",", "},"他")
+	else
+		return Functions.make_name_list(a,"{vv~}{ff~}",{", ",", "},"他")
+	end
+end
+\end{lstlisting}
+のようにします．
+こうすると，言語が``ja''であると判定されたエントリーに対しては，上記で設定された\luavar{templates["article"]}と\luavar{formatters:author}が使われます．
+それ以外の\luavar{templates}に対してはデフォルトのものが使われます．
+
+以下の項目の設定が可能です．
+\begin{itemize}
+\item \luavar{templates}
+\item \luavar{formatters}
+\item \luavar{crossref}
+\item \luavar{label}
+\end{itemize}
+
 \section{関数}\label{sec:関数}
 有用そうな関数群やオリジナルの\BibTeX に存在していた関数が，モジュール\luavar{labtx-funcs}で定義されています．
 \begin{lstlisting}
@@ -434,7 +490,7 @@ x = Functions.text_prefix(str,num)
 text_prefix("aあい",2)
 text_prefix("あいう",5)
 \end{lstlisting}
-はそれぞれ\luastring{aあ}，\luastring{あい}を返します．\footnote{内部コードはUTF-8なので，\luastring{あ}や\luastring{い}は3byteです．この扱いはどうするか考え中……．}
+はそれぞれ\luastring{aあ}，\luastring{あい}を返します．\footnote{内部コードはUTF-8なので，\luastring*{あ}や\luastring*{い}は3byteです．この扱いはどうするか考え中……．}
 
 \subsection{\luafunc{text\_length(str)}}
 strのバイト数を返しますが，コントロールシークエンス等や引数は加算されません．
