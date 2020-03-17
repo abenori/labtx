@@ -338,15 +338,15 @@ function Core:outputthebibliography()
 	apply_cross_reference_modifications(self)
 	-- sort
 	sort_cites(self)
+	-- set language
+	for i = 1,#self.cites do
+		self.cites[i].language = get_language(self,self.cites[i])
+	end
 	-- make label
 	Label.make_all_labels(self)
 	-- check citations
 	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)
-	end
-	-- set language
-	for i = 1,#self.cites do
-		self.cites[i].language = get_language(self,self.cites[i])
 	end
 
 	-- last modification
