@@ -66,7 +66,7 @@ local function modify_table(oldtable)
 			if type(target_type) == "string" then target_type = target_type:lower() end
 			t[source_type][target_type] = {}
 --			if type(v) ~= "table" then print("TYPE" .. type(v)) return nil end
-			for dummy,array in ipairs(v) do
+			for _,array in ipairs(v) do
 --				if type(array) ~= "table" then print("TYPE" .. type(array)) return nil end
 				local source_keys = array[1]
 				local target_keys = array[2]
@@ -74,18 +74,18 @@ local function modify_table(oldtable)
 				if type(target_keys) ~= "table" then target_keys = {target_keys} end
 				local extra = nil
 				if #array > 2 then extra = {table.unpack(array,3)} end
-				for dummy,from in ipairs(source_keys) do
+				for _,from in ipairs(source_keys) do
 					if type(from) == "string" then from = from:lower() end
-					if t[source_type][source_type][from] == nil then
-						t[source_type][source_type][from] = {}
+					if t[source_type][target_type][from] == nil then
+						t[source_type][target_type][from] = {}
 					end
-					for dummy,to in pairs(target_keys) do
+					for _,to in pairs(target_keys) do
 						to = to:lower()
 						if extra ~= nil then 
 							to = {to}
-							for dummy,ext in ipairs(extra) do table.insert(to,ext) end
+							for _,ext in ipairs(extra) do table.insert(to,ext) end
 						end
-						table.insert(t[source_type][source_type][from],to)
+						table.insert(t[source_type][target_type][from],to)
 					end
 				end
 			end

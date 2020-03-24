@@ -1,12 +1,7 @@
-local std_styles = require "labtx-style-std"
+local style = require "labtx-style-std"
 
-BibTeX.macros = std_styles.macros
-BibTeX.crossref = std_styles.crossref
-BibTeX.blockseparator = std_styles.blockseparator
-BibTeX.templates = std_styles.templates
-BibTeX.formatters = std_styles.formatters
-BibTeX.label.make = false
-BibTeX.sorting.targets = {"name","year","title"}
+style.label.make = false
+style.sorting.targets = {"name","year","title"}
 
-BibTeX:outputthebibliography()
+return style
 

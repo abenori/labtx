@@ -33,25 +33,6 @@ function Core.new(doctype)
 	local inherit_table_keys = {"preamble","key","db","macros"}
 	-- 以下アウトプット用設定
 	obj.doctype = doctype
-	obj.languages = {}
-	obj.crossref = CrossReference.new()
-	obj.crossref.templates = {}
-	obj.blockseparator = {}
-	obj.templates = {}
-	obj.formatters = {}
-	obj.label = Label.new()
-	obj.sorting = {}
-	obj.sorting.formatters = labtx_default.sorting.formatters
-	function obj.sorting.formatters:label(c)
-		local y = c.fields["year"]
-		c.fields["year"] = nil
-		local rv = Label.make_label(obj,c)
-		c.fields["year"] = y
-		return rv
-	end
-	obj.sorting.lessthan = labtx_default.sorting.lessthan
-	obj.sorting.equal = labtx_default.sorting.equal
-	obj.sorting.targets = labtx_default.sorting.targets
 	obj.modify_citations = nil
 	obj.warning_count = 0
 	local rv = setmetatable(obj,{
@@ -70,6 +51,35 @@ function Core.new(doctype)
 	return rv
 end
 
+function Core:get_template_setting()
+	local obj = {
+		languages = {},
+		crossref = CrossReference.new(),
+		blockseparator = {},
+		templates = {},
+		formatters = {},
+		label = Label.new(),
+		sorting = {
+			formatters = labtx_default.sorting.formatters,
+			lessthan = labtx_default.sorting.lessthan,
+			equal = labtx_default.sorting.equal,
+			targets = labtx_default.sorting.targets
+		},
+		modify_citations = nil,
+		macros = {},
+		preamble = "",
+	}
+	obj.crossref.templates = {}
+	function obj.sorting.formatters:label(c)
+		local y = c.fields["year"]
+		c.fields["year"] = nil
+		local rv = Label.make_label(obj,c)
+		c.fields["year"] = y
+		return rv
+	end
+	return obj
+end
+
 function Core:load_aux(file)
 	local aux,msg = self.doctype.load_aux(self,file)
 	if aux == nil then return false,msg end
@@ -86,8 +96,8 @@ function Core:load_aux(file)
 end
 
 
-local function get_language(self,c)
-	for key,val in pairs(self.languages) do
+local function get_language(style,c)
+	for key,val in pairs(style.languages) do
 		if val.is ~= nil then
 			if val.is(c) == true then return key end
 		else
@@ -193,20 +203,21 @@ local function generate_sortfunction(targets,formatters,equal,lessthan)
 	end
 end
 
-function Core:get_item_formatter()
+function Core:get_item_formatter(style)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
-		labtxdebug.typecheck(self.templates,"BibTeX.templates","table")
-		labtxdebug.typecheck(self.formatters,"BibTeX.formatters","table")
-		labtxdebug.typecheck(self.crossref,"BibTeX.crossref","table")
-		labtxdebug.typecheck(self.crossref.templates,"BibTeX.crossref.templates","table")
+		labtxdebug.typecheck(style.blockseparator,"style.blockseparator","table")
+		labtxdebug.typecheck(style.templates,"style.templates","table")
+		labtxdebug.typecheck(style.formatters,"style.formatters","table")
+		labtxdebug.typecheck(style.crossref,"style.crossref","table")
+		labtxdebug.typecheck(style.crossref.templates,"style.crossref.templates","table")
 	end
+	
 	-- formatter生成
-	local template = Template.new(self.blockseparator)
+	local template = Template.new(style.blockseparator)
 	-- 各フィールドを整形する関数を用意．
-	local default_field_formatters = template:modify_formatters(self.formatters)
+	local default_field_formatters = template:modify_formatters(style.formatters)
 	local lang_field_formatters = {}
-	for langname,lang in pairs(self.languages) do
+	for langname,lang in pairs(style.languages) do
 		if lang.formatters ~= nil then
 			lang_field_formatters[langname] = template:modify_formatters(lang.formatters)
 		end
@@ -214,7 +225,7 @@ function Core:get_item_formatter()
 	local field_formatters = {}
 	for key,val in pairs(default_field_formatters) do
 		field_formatters[key] = function(obj,c)
-			local l = get_language(self,c)
+			local l = get_language(style,c)
 			if l == nil or lang_field_formatters[l] == nil or lang_field_formatters[l][key] == nil then
 				return default_field_formatters[key](default_field_formatters,c)
 			else
@@ -225,14 +236,14 @@ function Core:get_item_formatter()
 	-- 整形関数用意
 	local default_entry_formatters = {} -- 整形関数のテーブルを入れる
 	local lang_entry_formatters = {} -- 言語ごとの整形関数のテーブルを入れる．
-	for key,val in pairs(self.templates) do
+	for key,val in pairs(style.templates) do
 		local f,msg
 		if type(val) == "string" then
 			f,msg = template:make(val,field_formatters)
 			if f == nil then self:error(msg,1) return end
 			default_entry_formatters[key] = f
 		else default_entry_formatters[key] = val end
-		for langname,lang in pairs(self.languages) do
+		for langname,lang in pairs(style.languages) do
 			if lang.templates ~= nil and lang.templates[key] ~= nil then
 				lang_entry_formatters[key] = {}
 				if type(lang.templates[key]) == "string" then
@@ -251,7 +262,7 @@ function Core:get_item_formatter()
 		end
 	end
 	local entry_formatter = function(c)
-		local l = get_language(self,c)
+		local l = get_language(style,c)
 		local f = entry_formatter_sub(c,c.type,l)
 		if f == nil then
 			self:warning("No template for the entry " .. c.type)
@@ -264,13 +275,13 @@ function Core:get_item_formatter()
 	-- CrossReferenceにも同じことをする．
 	local default_crossref_entry_formatters = {}
 	local lang_crossref_entry_formatters = {}
-	for key,val in pairs(self.crossref.templates) do
+	for key,val in pairs(style.crossref.templates) do
 		if type(val) == "string" then
 			local f,msg = template:make(val,field_formatters)
 			if f == nil then self:error(msg,1) return end
 			default_crossref_entry_formatters[key] = f
 		else default_crossref_entry_formatters[key] = val end
-		for langname,lang in pairs(self.languages) do
+		for langname,lang in pairs(style.languages) do
 			if lang.crossref ~= nil and lang.crossref.templates ~= nil and lang.crossref.templates[key] ~= nil then
 				lang_crossref_entry_formatters[key] = {}
 				if type(lang.crossref.templates[key]) == "string" then
@@ -289,7 +300,7 @@ function Core:get_item_formatter()
 		end
 	end
 	local crossref_entry_formatter = function(c)
-		local l = get_language(self,c)
+		local l = get_language(style,c)
 		local f = crossref_entry_formatter_sub(c,c.type,l)
 		if f == nil then
 			f = entry_formatter_sub(c,"",l)
@@ -300,50 +311,54 @@ function Core:get_item_formatter()
 	return CrossReference.make_formatter(entry_formatter,crossref_entry_formatter)
 end
 
-local function apply_cross_reference_modifications(self)
-	self.cites = self.crossref:modify_citations(self.cites,self.database)
+local function apply_cross_reference_modifications(self,style)
+	self.cites = style.crossref:modify_citations(self.cites,self.database)
 end
 
-local function sort_cites(self)
+local function sort_cites(self,style)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
-		if self.sorting ~= nil then
-			labtxdebug.typecheck(self.sorting.targets,"BibTeX.sorting.targets","table",true)
-			labtxdebug.typecheck(self.sorting.formatters,"BibTeX.sorting.formatters","table",true)
+		labtxdebug.typecheck(style.blockseparator,"style.blockseparator","table")
+		if style.sorting ~= nil then
+			labtxdebug.typecheck(style.sorting.targets,"stylee.sorting.targets","table",true)
+			labtxdebug.typecheck(style.sorting.formatters,"style.sorting.formatters","table",true)
 		end
 	end
-	if self.sorting ~= nil and self.sorting.targets ~= nil and #self.sorting.targets > 0 then
-		local template = Template.new(self.blockseparator)
+	if style.sorting ~= nil and style.sorting.targets ~= nil and #style.sorting.targets > 0 then
+		local template = Template.new(style.blockseparator)
 		local sort_formatter
-		sort_formatter,msg = template:modify_formatters(self.sorting.formatters)
+		sort_formatter,msg = template:modify_formatters(style.sorting.formatters)
 		if sort_formatter == nil then self:error(msg,1) return end
-		local sortfunc = generate_sortfunction(self.sorting.targets,sort_formatter,self.sorting.equal,self.sorting.lessthan)
+		local sortfunc = generate_sortfunction(style.sorting.targets,sort_formatter,style.sorting.equal,style.sorting.lessthan)
 		self.cites = Functions.stable_sort(self.cites, sortfunc)
 	end
 end
 
 
-function Core:outputthebibliography()
+function Core:outputthebibliography(style)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(self.blockseparator,"BibTeX.blockseparator","table")
-		labtxdebug.typecheck(self.sorting,"BibTeX.sorting","table",true)
-		if self.sorting ~= nil then
-			labtxdebug.typecheck(self.sorting.targets,"BibTeX.sorting.targets","table",true)
-			labtxdebug.typecheck(self.sorting.formatters,"BibTeX.sorting.formatters","table",true)
+		labtxdebug.typecheck(style.blockseparator,"style.blockseparator","table")
+		labtxdebug.typecheck(style.sorting,"style.sorting","table",true)
+		if style.sorting ~= nil then
+			labtxdebug.typecheck(style.sorting.targets,"style.sorting.targets","table",true)
+			labtxdebug.typecheck(style.sorting.formatters,"style.sorting.formatters","table",true)
 		end
-		labtxdebug.typecheck(self.modify_citations,"BibTeX.modify_citations","function",true)
+		labtxdebug.typecheck(style.modify_citations,"style.modify_citations","function",true)
 	end
-	local output_cite_function = self:get_item_formatter()
+	BibTeX.macros = style.macros
+	BibTeX.preamble = BibTeX.preamble .. style.preamble
+	local output_cite_function = self:get_item_formatter(style)
 	-- Cross Reference
-	apply_cross_reference_modifications(self)
+	apply_cross_reference_modifications(self,style)
 	-- sort
-	sort_cites(self)
+	sort_cites(self,style)
 	-- set language
 	for i = 1,#self.cites do
-		self.cites[i].language = get_language(self,self.cites[i])
+		self.cites[i].language = get_language(style,self.cites[i])
 	end
 	-- make label
-	Label.make_all_labels(self)
+	local c,msg = Label.make_all_labels(style,self.cites)
+	if c == nil then error(msg) end
+	self.cites = c
 	-- check citations
 	for _,v in pairs(Functions.citation_check_to_string_table(Functions.citation_check(self.cites))) do
 		self:warning(v)

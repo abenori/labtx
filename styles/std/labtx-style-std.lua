@@ -5,7 +5,7 @@ local labtxdebug = require "labtx-debug"
 --labtxdebug.debugmode = true
 
 
-local std_styles = {}
+local std_styles = BibTeX:get_template_setting()
 
 std_styles.macros = {}
 std_styles.macros["jan"] = "January"

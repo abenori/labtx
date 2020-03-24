@@ -27,23 +27,23 @@ local labtxdebug = require "labtx-debug"
 
 local latex_label = {}
 
-local function get_label_formatter(bibtex)
-	local template = Template.new(bibtex.blockseparator)
+local function get_label_formatter(style)
+	local template = Template.new(style.blockseparator)
 	local label_formatter
-	if type(bibtex.label.make) == "function" then
+	if type(style.label.make) == "function" then
 		label_formatter = function(c)
 			local l = c.language
-			if l == nil or bibtex.languages[l] == nil or bibtex.languages[l].label == nil or bibtex.languages[l].label.make == nil then
-				return bibtex.label:make(c)
+			if l == nil or style.languages[l] == nil or style.languages[l].label == nil or style.languages[l].label.make == nil then
+				return style.label:make(c)
 			else
-				if type(bibtex.languages[l].label.make) ~= "function" then bibtex:error("languages.label.make should be a function when label.make is a function") return nil end
-				return bibtex.languages[l].label:make(c)
+				if type(style.languages[l].label.make) ~= "function" then return nil,"languages.label.make should be a function when label.make is a function" end
+				return style.languages[l].label:make(c)
 			end
 		end
 	else
-		local default_label_field_formatters = template:modify_formatters(bibtex.label.formatters)
+		local default_label_field_formatters = template:modify_formatters(style.label.formatters)
 		local lang_label_field_formatters = {}
-		for langname,lang in pairs(bibtex.languages) do
+		for langname,lang in pairs(style.languages) do
 			if lang.label ~= nil and lang.label.formatters ~= nil then
 				lang_label_field_formatters[langname] = template:modify_formatters(lang.label.formatters)
 			end
@@ -62,21 +62,21 @@ local function get_label_formatter(bibtex)
 		
 		local default_label_formatters = {}
 		local lang_label_formatters = {}
-		for key,val in pairs(bibtex.label.templates) do
+		for key,val in pairs(style.label.templates) do
 			local f,msg
 			if type(val) == "string" then
 				f,msg = template:make(val,label_field_formatters)
-				if f == nil then bibtex:error(msg .. " in label.templates") return end
+				if f == nil then return nil,msg .. " in label.templates" end
 				default_label_formatters[key] = f
 			else
 				default_label_formatters[key] = val
 			end
-			for langname,lang in pairs(bibtex.languages) do
+			for langname,lang in pairs(style.languages) do
 				if lang.label ~= nil and lang.label.templates ~= nil and lang.label.templates[key] ~= nil then
 					lang_label_formatters[key] = {}
 					if type(lang.label.templates[key]) == "string" then
 						f,msg = template:make(lang.label.template[key],lang_field_formatters)
-						if f == nil then bibtex:error(msg .. " in label.templates") return end
+						if f == nil then return nil,msg .. " in label.templates" end
 						lang_label_formatters[key][langname] = f
 					end
 				end
@@ -93,7 +93,7 @@ local function get_label_formatter(bibtex)
 				local f = label_formatter_sub(c.type,l)
 				if f == nil then
 					f = label_formatter_sub("",l)
-					if f == nil then bibtex:error("Cannot generate label for the type " .. c.type,1) return nil end
+					if f == nil then return nil,"Cannot generate label for the type " .. c.type end
 				end
 				return f(c)
 			end
@@ -114,23 +114,25 @@ function latex_label.make_label(bibtex,c)
 	else return nil end
 end
 
-function latex_label.make_all_labels(bibtex)
+function latex_label.make_all_labels(style,cites)
 	if labtxdebug.debugmode then
-		labtxdebug.typecheck(bibtex.label,"BibTeX.label","table")
-		labtxdebug.typecheck(bibtex.label.make,"BibTeX.label.make",{"function","boolean"},true)
+		labtxdebug.typecheck(style.label,"label","table")
+		labtxdebug.typecheck(style.label.make,"label.make",{"function","boolean"},true)
 	end
-	if bibtex.label.make ~= nil and bibtex.label.make ~= false then
-		local label_formatter = get_label_formatter(bibtex)
-		for i = 1,#bibtex.cites do
-			bibtex.cites[i].label = label_formatter(bibtex.cites[i])
-			if bibtex.cites[i].label == nil then
-				bibtex:warning("cannot generate the label of " .. bibtex.cites[i].key)
+	if style.label.make ~= nil and style.label.make ~= false then
+		local label_formatter,msg = get_label_formatter(style)
+		if label_formatter == nil then return nil,msg end
+		for i = 1,#cites do
+			cites[i].label = label_formatter(cites[i])
+			if cites[i].label == nil then
+				bibtex:warning("cannot generate the label of " .. cites[i].key)
 			end
 		end
-		if bibtex.label.add_suffix ~= nil then
-			bibtex.cites = bibtex.label:add_suffix(bibtex.cites)
+		if style.label.add_suffix ~= nil then
+			cites = style.label:add_suffix(cites)
 		end
 	end
+	return cites
 end
 
 
