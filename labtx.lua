@@ -27,7 +27,7 @@ option.options = {
 local files,msg = option:parse(arg)
 if files == nil then io.stderr:write("labtx error: " .. msg .. "\n") os.exit(1) end
 
-local doctype = require ("labtx-" .. doctypename .. "_typ")
+local doctype = require ("labtx-" .. doctypename .. "_type")
 if doctype == nil then
 	io.stderr:write("can't find the document type " .. doctypename .. "\n")
 	os.exit(1)
