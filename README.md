@@ -1,16 +1,20 @@
 # labtx
 
-BibTeX by Lua.
+A Lua implementation of BibTeX
 
 ## Installation
-You need TeX Live or W32TeX. Copy *.lua in the directory where kpathsea can find the files. For example, in $TEXMF/scripts/labtx .
-- UNIX: create a link to labtx.lua in bin directory.
-- TeX Live on Windows: create a copy of bin/win32/runscript.exe as bin/win32/labtx.exe .
-- W32TeX: create a copy of bin/runscr.exe as bin/labtx.exe .
+Cipy every .lua file to $TEXMF/scripts/labtx and 
+
+- TeX Live on Windows: copy bin/win32/runscript.exe to bin/win32/labtx.exe .
+- W32TeX: copy bin/runscr.exe to bin/labtx.exe .
+- Others: create a link to labtx.lua in bin directory.
 
 ## Usage
 For sample.tex, run
 
-    labtx sample
+```
+labtx sample
+```
 
-instead of ``bibtex sample''.
+## How to use
+See [the manual](doc/labtx-ja.pdf) (in Japanese)
