@@ -1,9 +1,10 @@
 -- デフォルト設定
 local Functions = require "labtx-funcs"
-local Template = require "labtx-template"
 local default = {}
 
 local function purify(s) return s:gsub("\\[a-zA-Z]*",""):gsub("[ -/:-@%[-`{-~]","") end
+
+default.blockseparator = {{", ","."}}
 
 -- sort設定
 -- default.sorting.formatters["name_format"]

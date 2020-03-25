@@ -14,13 +14,13 @@ local function show_help(options_msg)
 end
 
 local doctypename = "latex"
-local defstyle = nil
+local defstyle_name = nil
 
 option.options = {
    {"min-crossrefs=","include item after <NUM> cross-refs; default 2",function(n) mincrossrefs = n end,"number"},
    {"help","display this message and exit",function() show_help(option:helps()) os.exit(0) end},
    {"type=",function(s) doctypename = s end,"string"},
-   {"style=","specify the style",function(s) defstyle = s end,"string"},
+   {"style=","specify the style",function(s) defstyle_name = s end,"string"},
    {"debug",function() labtxdebug.debugmode = true end}
 }
 
@@ -48,15 +48,17 @@ for _,f in ipairs(files) do
 	local b,msg = BibTeX:load_aux(f)
 	if b == false then io.stderr:write(msg .. "\n") goto continue end
 	BibTeX:message("The top-level auxiliary file: " .. get_filename(BibTeX.aux_file))
---	BibTeX.crossref.mincrossrefs = mincrossrefs
-	if defstyle ~= nil then BibTeX.style = defstyle end
-	if BibTeX.style == nil then BibTeX:error("style is not specified") goto continue end
-	local style = kpse.find_file("labtx-" .. BibTeX.style .. "_bst.lua","lua")
-	if style == nil then
-		BibTeX:error("style " .. BibTeX.style .. " is not found",3)
+	local style = BibTeX:get_default_style()
+	style.crossref.mincrossrefs = mincrossrefs
+	BibTeX:set_default_style(style)
+	if defstyle_name ~= nil then BibTeX.style_name = defstyle_name end
+	if BibTeX.style_name == nil then BibTeX:error("style is not specified") goto continue end
+	local style_file = kpse.find_file("labtx-" .. BibTeX.style_name .. "_bst.lua","lua")
+	if style_file == nil then
+		BibTeX:error("style " .. BibTeX.style_name .. " is not found",3)
 		goto continue 
 	end
-	BibTeX:message("The style file: " .. get_filename(style))
+	BibTeX:message("The style file: " .. get_filename(style_file))
 	local b,m = BibTeX:read_db()
 	if b == false then BibTeX:error(m .. "\n",1) end
 	BibTeX.mode = 0
@@ -66,7 +68,7 @@ for _,f in ipairs(files) do
 	local function style_file_exec()
 --		io = nil
 --		os = nil
-		local sty = dofile(style)
+		local sty = dofile(style_file)
 		if BibTeX.mode == 0 then BibTeX:outputthebibliography(sty) end
 		io = backup.io
 		os = backup.os

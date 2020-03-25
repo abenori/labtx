@@ -1,7 +1,7 @@
 local Functions = require "labtx-funcs"
 local CrossReference = require "labtx-crossref"
 
-local ams_styles = BibTeX:get_template_setting()
+local ams_styles = BibTeX:get_default_style()
 ams_styles.macros = {}
 
 ams_styles.macros["jan"] = "January"

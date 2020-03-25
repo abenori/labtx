@@ -35,24 +35,7 @@ function Core.new(doctype)
 	obj.doctype = doctype
 	obj.modify_citations = nil
 	obj.warning_count = 0
-	local rv = setmetatable(obj,{
-	__index = 
-		function(table,key)
-			if find(inherit_table_keys,key) ~= nil then return table.database[key]
-			else return Core[key] end
-		end,
-	__newindex = 
-		function(table,key,value)
-			if find(inherit_table_keys,key) ~= nil then table.database[key] = value
-			else Core[key] = value end
-		end
-	})
-	doctype.init(rv)
-	return rv
-end
-
-function Core:get_template_setting()
-	local obj = {
+	obj.default_style = {
 		languages = {},
 		crossref = CrossReference.new(),
 		blockseparator = {},
@@ -69,15 +52,50 @@ function Core:get_template_setting()
 		macros = {},
 		preamble = "",
 	}
-	obj.crossref.templates = {}
-	function obj.sorting.formatters:label(c)
+	obj.default_style.crossref.templates = {}
+	function obj.default_style.sorting.formatters:label(c)
 		local y = c.fields["year"]
 		c.fields["year"] = nil
-		local rv = Label.make_label(obj,c)
+		local rv = Label.make_label(obj.default_style,c)
 		c.fields["year"] = y
 		return rv
 	end
-	return obj
+	local rv = setmetatable(obj,{
+	__index = 
+		function(table,key)
+			if find(inherit_table_keys,key) ~= nil then return table.database[key]
+			else return Core[key] end
+		end,
+	__newindex = 
+		function(table,key,value)
+			if find(inherit_table_keys,key) ~= nil then table.database[key] = value
+			else Core[key] = value end
+		end
+	})
+	doctype.init(rv)
+	return rv
+end
+
+local function clone_table(t)
+	local r = {}
+	for k,v in pairs(t) do
+		if type(v) == "table" then
+			r[k] = clone_table(v)
+		else
+			r[k] = v
+		end
+	end
+	local meta = getmetatable(t)
+	if meta then setmetatable(r,meta) end
+	return r
+end
+
+function Core:get_default_style()
+	return clone_table(self.default_style)
+end
+
+function Core:set_default_style(st)
+	self.default_style = clone_table(st)
 end
 
 function Core:load_aux(file)
@@ -88,7 +106,7 @@ function Core:load_aux(file)
 	self.blg,msg = io.open(aux.log,"w")
 	if self.blg == nil then return false,msg end
 	self.aux_file = aux.file
-	self.style = aux.style
+	self.style_name = aux.style
 	self.cites = aux.cites
 	self.bibs = aux.db
 	self.type_data = aux.type_data

@@ -204,11 +204,7 @@ function Template:MakeStringFunction(array,funcs,blocknest)
 	local f3 = self:MakeTemplateImpl(array[3],funcs,blocknest)
 	if f1 == nil or f2 == nil or f3 == nil then return nil end
 	return function(c)
-		local x = ""
 		local t2 = f2(c)
-		for i = 1,#t2 do
-			x = x .. t2[i]
-		end
 		if not isempty(t2) then
 			return table_connect(table_connect(f1(c),t2),f3(c))
 		else
@@ -334,22 +330,19 @@ function Template:modify_formatters(funcs)
 		return nil,"Template.make: type error, type(formatters) = " .. type(funcs)
 	end
 	local ff = {}
-	while true do
-		local changed = false
-		for k,v in pairs(funcs) do
-			if type(v) ~= "function" then
-				local f = self:make_from_str(v,funcs)
-				if f ~= nil then
-					ff[k] = function(dummy,c) return f(c) end
-					changed = true
-				else
-					return nil,Template.LastMsg
-				end
-			else ff[k] = v end
-		end
-		if not changed then break end
-		funcs = ff
-		ff = {}
+	for k,v in pairs(funcs) do
+		if type(v) ~= "function" then
+			if type(v) ~= "string" then
+				return nil,"Template.make: type error, type of formatters[\"" .. k .. "\"] is " .. type(v)
+			end
+			local f = self:make_from_str(v,{})
+			if f ~= nil then
+				ff[k] = function(dummy,c) return f(c) end
+				changed = true
+			else
+				return nil,Template.LastMsg
+			end
+		else ff[k] = v end
 	end
 	return ff
 --	local r = {}
