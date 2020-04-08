@@ -69,7 +69,7 @@ for _,f in ipairs(files) do
 --		io = nil
 --		os = nil
 		local sty = dofile(style_file)
-		if BibTeX.mode == 0 then BibTeX:outputthebibliography(sty) end
+		if BibTeX.mode == 0 and sty ~= nil then BibTeX:outputthebibliography(sty) end
 		io = backup.io
 		os = backup.os
 	end
